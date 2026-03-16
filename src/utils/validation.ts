@@ -1,0 +1,55 @@
+/**
+ * Savor - 输入验证中间件
+ * 基于 Zod 的请求验证
+ */
+
+import { Request, Response, NextFunction } from 'express';
+import { ZodObject, ZodError } from 'zod';
+import { ValidationError } from './errors.js';
+
+/**
+ * Zod 验证中间件
+ * 验证请求体、查询参数、路径参数
+ */
+export const validate = (schema: ZodObject<any>) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await schema.parseAsync({
+        body: req.body,
+        query: req.query,
+        params: req.params,
+      });
+      next();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const errors = error.issues.map((issue) => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+        }));
+        next(new ValidationError('验证失败', errors));
+      } else {
+        next(error);
+      }
+    }
+  };
+};
+
+/**
+ * 可选验证（不阻止请求，只记录警告）
+ */
+export const optionalValidate = (schema: ZodObject<any>) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await schema.parseAsync({
+        body: req.body,
+        query: req.query,
+        params: req.params,
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        console.warn('[Validation Warning] 请求验证失败但已放行:', error.issues);
+      }
+    }
+    next();
+  };
+};
