@@ -313,6 +313,11 @@ export class ProxyServer {
         });
       }
 
+      // 流式请求时添加 stream_options 以获取 token 统计
+      if (stream) {
+        body.stream_options = { include_usage: true };
+      }
+
       // 发送请求到上游（带超时）
       const controller = new AbortController();
       const timeoutMs = this.config.timeout?.upstream || 60000;
