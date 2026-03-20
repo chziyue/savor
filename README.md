@@ -32,7 +32,7 @@ Savor is a lightweight LLM proxy gateway that sits between OpenClaw and LLM APIs
 ### Install
 
 ```bash
-git clone https://github.com/your-repo/savor.git
+git clone https://github.com/chziyue/savor.git
 cd savor
 npm install
 npm run build

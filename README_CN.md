@@ -30,7 +30,7 @@ Savor 是一个轻量级的 LLM 代理网关，位于 OpenClaw 和大模型 API 
 ### 安装
 
 ```bash
-git clone https://github.com/your-repo/savor.git
+git clone https://github.com/chziyue/savor.git
 cd savor
 npm install
 npm run build
