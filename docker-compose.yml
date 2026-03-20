@@ -1,0 +1,19 @@
+services:
+  savor:
+    image: chziyue/savor:latest
+    container_name: savor
+    restart: unless-stopped
+    ports:
+      - "3456:3456"
+      - "3457:3457"
+    volumes:
+      - ./config.js:/root/savor/config.js:ro
+      - ./data:/root/savor/data
+      - ./certs:/root/savor/certs:ro
+      - ./logs:/root/savor/logs
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+    working_dir: /root/savor
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["source ~/.nvm/nvm.sh && pm2 start ecosystem.config.js --no-daemon"]

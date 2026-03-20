@@ -143,11 +143,43 @@ https: {
 }
 ```
 
+## Docker Deployment (Recommended)
+
+No need to install Node.js, deploy with Docker directly.
+
+### Steps
+
+```bash
+# 1. Create directory
+mkdir savor
+cd savor
+
+# 2. Download configuration files
+curl -O https://raw.githubusercontent.com/chziyue/savor/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/chziyue/savor/main/config.js
+
+# 3. Edit config file, add upstream API URL
+vim config.js
+# Or use other editor to modify the upstream field
+
+# 4. Start service
+docker compose up -d
+```
+
+### Common Commands
+
+| Action | Command |
+|--------|---------|
+| View logs | `docker compose logs -f` |
+| Stop service | `docker compose down` |
+| Restart service | `docker compose restart` |
+| Update image | `docker compose pull && docker compose up -d` |
+
 ## License
 
 [MIT](LICENSE)
 
 ---
 
-_Project: Savor_  
+_Project: Savor_
 _For: OpenClaw Ecosystem_

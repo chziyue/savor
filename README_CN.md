@@ -143,11 +143,43 @@ https: {
 }
 ```
 
+## 使用 Docker 启动（推荐）
+
+无需安装 Node.js，直接使用 Docker 部署。
+
+### 步骤
+
+```bash
+# 1. 创建目录
+mkdir savor
+cd savor
+
+# 2. 下载配置文件
+curl -O https://raw.githubusercontent.com/chziyue/savor/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/chziyue/savor/main/config.js
+
+# 3. 修改配置文件，添加上游 API 地址
+vim config.js
+# 或使用其他编辑器修改 upstream 字段
+
+# 4. 启动服务
+docker compose up -d
+```
+
+### 常用命令
+
+| 操作 | 命令 |
+|------|------|
+| 查看日志 | `docker compose logs -f` |
+| 停止服务 | `docker compose down` |
+| 重启服务 | `docker compose restart` |
+| 更新镜像 | `docker compose pull && docker compose up -d` |
+
 ## 许可证
 
 [MIT](LICENSE)
 
 ---
 
-_Project: Savor_  
+_Project: Savor_
 _For: OpenClaw Ecosystem_
