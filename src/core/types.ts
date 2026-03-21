@@ -3,7 +3,6 @@
  * 定义各模块的接口类型，便于测试和替换实现
  */
 
-import { Request, Response } from 'express';
 import type { SavorConfig } from '../config/index.js';
 
 /**

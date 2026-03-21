@@ -135,7 +135,7 @@ export class LogBackup {
               errorMessage: data.errorMessage
             });
           }
-        } catch (e) {
+        } catch {
           logger.warn('[LogBackup] 解析日志行失败', { line: line.slice(0, 100) });
         }
       });

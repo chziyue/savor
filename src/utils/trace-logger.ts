@@ -85,7 +85,7 @@ export class TraceLogger {
           }
         }
       }
-    } catch (error) {
+    } catch {
       // 目录可能不存在，忽略错误
     }
     

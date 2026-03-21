@@ -68,7 +68,7 @@ const PATTERNS = {
     email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
     bankCard: /(?<!\d)(?:[1-9]\d{15,18})(?!\d)/g,
     // Token、密码、私钥等敏感信息（已合并到隐私过滤）
-    token: /(?:(?:bearer)|(?:token))\s+[:=]?\s*[a-zA-Z0-9_\-\.]{20,}/gi,
+    token: /(?:(?:bearer)|(?:token))\s+[:=]?\s*[a-zA-Z0-9_.-]{20,}/gi,
     password: /(?:(?:password)|(?:passwd)|(?:pwd))\s*[:=]\s*["']?[^\s"']{4,}["']?/gi,
     privateKey: /-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA )?PRIVATE KEY-----/g,
   },

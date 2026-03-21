@@ -3,7 +3,7 @@
  * 设计风格：赛博朋克科技风
  */
 
-import { getTodayStats, getRecentRequests, getYesterdayStats, getLast7DaysStats } from '../utils/stats.js';
+import { getTodayStats, getYesterdayStats, getLast7DaysStats } from '../utils/stats.js';
 
 export function renderCyberDashboard(): string {
   const stats = getYesterdayStats();

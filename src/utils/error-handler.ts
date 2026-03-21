@@ -3,7 +3,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { AppError, ValidationError } from './errors.js';
+import { AppError } from './errors.js';
 import { logger } from './logger.js';
 
 /**

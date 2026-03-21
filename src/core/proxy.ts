@@ -5,12 +5,12 @@
 
 import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
-import { recordRequest, initStats, setLoopGuard } from '../utils/stats.js';
+import { recordRequest, initStats } from '../utils/stats.js';
 import { LoopGuard } from '../cache/index.js';
 import { TraceLogger, traceStep, setTraceLogger } from '../utils/trace-logger.js';
 import { RateLimiter } from '../utils/rate-limiter.js';
-import { filterObject, getFilterMarkers, type FilterResult, type FilterObjectResult } from '../utils/filter.js';
-import { BadGatewayError, TooManyRequestsError } from '../utils/errors.js';
+import { filterObject, getFilterMarkers, type FilterObjectResult } from '../utils/filter.js';
+import { BadGatewayError } from '../utils/errors.js';
 import { createDependencies } from './factory.js';
 import type { SavorConfig } from '../config/index.js';
 import type { ProxyDependencies, ILogger } from './types.js';
@@ -44,7 +44,6 @@ export class ProxyServer {
       // 如果注入了 loopGuard，使用注入的
       if (finalDeps.loopGuard) {
         this.loopGuard = finalDeps.loopGuard as unknown as LoopGuard;
-        setLoopGuard(this.loopGuard);
       }
       this.logger.info('[Proxy] 循环保护已启用', config.loopGuardConfig || {});
     }
@@ -85,7 +84,6 @@ export class ProxyServer {
     let body = req.body;
     let filterMarkers: string[] | undefined;
     let contextTruncated = false;
-    let savedTokens = 0;
 
     try {
       let messages = body.messages || [];
@@ -239,7 +237,7 @@ export class ProxyServer {
             res.json(guardResult.response);
             return;
             
-          case 'hit':
+          case 'hit': {
             // 命中缓存，直接返回
             logger.info(`[${requestId}] 循环缓存命中 (${guardResult.count}/4)`);
             
@@ -272,6 +270,7 @@ export class ProxyServer {
             
             res.json(guardResult.response);
             return;
+          }
             
           case 'cache':
             // 需要缓存这次响应
@@ -720,7 +719,7 @@ export class ProxyServer {
           totalEnglishChars++;
         } else if (/[0-9]/.test(char)) {
           totalDigitChars++;
-        } else if (/[\{\}\[\]\:\"\,\'\\]/.test(char)) {
+        } else if (/[{}[\]:"',\\]/.test(char)) {
           totalJsonStructChars++;
         }
         // 其他字符（空格、换行、标点等）忽略或低权重
@@ -758,7 +757,7 @@ export class ProxyServer {
         englishChars++;
       } else if (/[0-9]/.test(char)) {
         digitChars++;
-      } else if (/[\{\}\[\]\:\"\,\'\\]/.test(char)) {
+      } else if (/[{}[\]:"',\\]/.test(char)) {
         jsonStructChars++;
       }
     }

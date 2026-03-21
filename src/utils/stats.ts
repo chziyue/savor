@@ -5,14 +5,6 @@
 
 import { logger } from './logger.js';
 import { StatsDatabase, LogBackup, type RequestRecord } from '../db/index.js';
-import { LoopGuard } from '../cache/index.js';
-
-// 全局 LoopGuard 引用（由 proxy.ts 设置）
-let loopGuardRef: LoopGuard | null = null;
-
-export function setLoopGuard(guard: LoopGuard): void {
-  loopGuardRef = guard;
-}
 
 // 模型单价配置（元/千 token）
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -82,7 +74,6 @@ export function getTodayStats(): any {
   if (!db) return createEmptyDailyStats();
   
   const raw: any = db.getTodayStats();
-  const cacheRaw: any = db.getTodayCacheStats(); // 获取缓存统计
   
   // 使用北京时间获取今日日期（格式：YYYY-MM-DD）
   const now = new Date();
@@ -92,8 +83,6 @@ export function getTodayStats(): any {
   const today = `${year}-${month}-${day}`;
   
   const totalRequests = raw?.total_requests || 0;
-  const cacheHits = cacheRaw?.cache_hits || 0;
-  const actualRequests = totalRequests - cacheHits; // 实际请求数（不含缓存命中）
   const totalTokens = raw?.total_tokens || 0;
   
   // 获取上下文裁切统计
@@ -140,7 +129,6 @@ export function getYesterdayStats(): any {
   const yesterday = `${year}-${month}-${day}`;
   
   const raw: any = db.getDailyStats(yesterday);
-  const cacheRaw: any = db.getDailyStats(yesterday); // TODO: 后续实现缓存统计
   
   const totalRequests = raw?.total_requests || 0;
   const totalTokens = raw?.total_tokens || 0;

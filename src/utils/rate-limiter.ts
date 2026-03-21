@@ -222,15 +222,11 @@ export class RateLimiter {
     autoUnlockAt?: string;
     requestCount: number;
   }> {
-    const now = Date.now();
     const statuses: any[] = [];
 
     for (const [clientId, state] of this.users.entries()) {
       // 清理过期请求
       this.cleanupUserState(state);
-      
-      const oldestRequest = state.requests[0] || now;
-      const resetTime = oldestRequest + this.windowMs;
       
       statuses.push({
         clientId,

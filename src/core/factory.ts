@@ -6,7 +6,7 @@
 import { logger } from '../utils/logger.js';
 import { LoopGuard } from '../cache/index.js';
 import { RateLimiter } from '../utils/rate-limiter.js';
-import { TraceLogger, setTraceLogger } from '../utils/trace-logger.js';
+import { TraceLogger } from '../utils/trace-logger.js';
 import { recordRequest } from '../utils/stats.js';
 import type { SavorConfig } from '../config/index.js';
 import type { ProxyDependencies, ILogger, ILoopGuard, IRateLimiter, ITraceLogger, IStats } from './types.js';

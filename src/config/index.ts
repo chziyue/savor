@@ -154,10 +154,11 @@ function loadUserConfig(): Partial<SavorConfig> {
   if (fs.existsSync(configPath)) {
     try {
       delete require.cache[require.resolve(configPath)];
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const userConfig = require(configPath);
       logger.info('[Config] Loaded config.js');
       return userConfig;
-    } catch (e) {
+    } catch {
       logger.warn('[Config] Failed to load config.js, using defaults');
     }
   }
