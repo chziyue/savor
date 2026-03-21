@@ -5,6 +5,7 @@
  */
 
 import express from 'express';
+import { VERSION } from './version.js';
 import helmet from 'helmet';
 import https from 'https';
 import { loadConfig } from './config/index.js';
@@ -112,7 +113,7 @@ async function main() {
     res.json({
       status: 'ok',
       service: 'savor',
-      version: '0.3.4',
+      version: VERSION,
       config: 'default',
       timestamp: new Date().toISOString()
     });
