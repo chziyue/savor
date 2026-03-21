@@ -8,14 +8,11 @@ import { getTodayStats, getRecentRequests, getRecentLogsSummary, getLogDetail, g
 import { renderCyberDashboard } from './dashboard-new.js';
 import { renderLogsPage } from './logs-page.js';
 
-// 使用 process.cwd() 作为基础路径
-const __dirname = process.cwd();
-
 export function createWebServer(): express.Router {
   const router = express.Router();
   
-  // 静态资源
-  router.use('/static', express.static(path.join(__dirname, 'public')));
+  // 静态资源 - 使用 process.cwd() 作为基础路径
+  router.use('/static', express.static(path.join(process.cwd(), 'public')));
   
   // API: 总体统计
   router.get('/api/stats/overall', (req, res) => {

@@ -4,6 +4,7 @@
   "description": "面向 OpenClaw 的 LLM 代理网关 - 省钱、省 Token、实时监控",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "commonjs",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:config": "CONFIG=openclaw tsx watch src/index.ts",
