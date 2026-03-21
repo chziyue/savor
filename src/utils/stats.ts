@@ -4,7 +4,60 @@
  */
 
 import { logger } from './logger.js';
-import { StatsDatabase, LogBackup, type RequestRecord } from '../db/index.js';
+import { StatsDatabase, LogBackup, type RequestRecord, type LogSummaryRow, type WeeklyStatsRow } from '../db/index.js';
+
+/**
+ * 每日统计数据（数据库返回）
+ */
+interface DailyStatsRaw {
+  total_requests?: number;
+  success_requests?: number;
+  error_requests?: number;
+  total_prompt_tokens?: number;
+  total_completion_tokens?: number;
+  total_tokens?: number;
+  avg_duration?: number;
+}
+
+/**
+ * 每日统计返回值
+ */
+export interface DailyStats {
+  date: string;
+  totalRequests: number;
+  successRequests: number;
+  errorRequests: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalTokens: number;
+  avgDuration: number;
+  estimatedCost: number;
+  contextTruncated: number;
+  savedTokens: number;
+  privacyFiltered: number;
+  currentQPS?: number;
+  weekly?: WeeklyStatsRow[];
+  avgResponseTime?: number;
+}
+
+/**
+ * 总体统计返回值
+ */
+export interface OverallStats {
+  totalRequests: number;
+  actualRequests: number;
+  successRequests: number;
+  errorRequests: number;
+  successRate: number;
+  totalTokens: number;
+  actualTokens: number;
+  totalCost: number;
+  uptime: number;
+  cacheHits: number;
+  cacheHitRate: number;
+  savedTokens: number;
+  avgResponseTime: number;
+}
 
 // 模型单价配置（元/千 token）
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -70,10 +123,10 @@ export function recordRequest(stats: RequestRecord): void {
 /**
  * 获取今日统计
  */
-export function getTodayStats(): any {
+export function getTodayStats(): DailyStats {
   if (!db) return createEmptyDailyStats();
   
-  const raw: any = db.getTodayStats();
+  const raw: DailyStatsRaw = db.getTodayStats() as DailyStatsRaw;
   
   // 使用北京时间获取今日日期（格式：YYYY-MM-DD）
   const now = new Date();
@@ -117,7 +170,7 @@ export function getTodayStats(): any {
 /**
  * 获取昨日统计
  */
-export function getYesterdayStats(): any {
+export function getYesterdayStats(): DailyStats {
   if (!db) return createEmptyDailyStats();
   
   // 使用北京时间获取昨日日期（格式：YYYY-MM-DD）
@@ -128,7 +181,7 @@ export function getYesterdayStats(): any {
   const day = String(now.getDate()).padStart(2, '0');
   const yesterday = `${year}-${month}-${day}`;
   
-  const raw: any = db.getDailyStats(yesterday);
+  const raw: DailyStatsRaw = db.getDailyStats(yesterday) as DailyStatsRaw;
   
   const totalRequests = raw?.total_requests || 0;
   const totalTokens = raw?.total_tokens || 0;
@@ -166,16 +219,22 @@ export function getRecentRequests(n: number = 100): RequestRecord[] {
   return db?.getRecentRequests(n) || [];
 }
 
-export function getRecentLogsSummary(n: number = 100): any[] {
+interface LogDetailRow {
+  requestBody?: string;
+  responseBody?: string;
+}
+
+export function getRecentLogsSummary(n: number = 100): LogSummaryRow[] {
   return db?.getRecentLogsSummary(n) || [];
 }
 
 /**
  * 获取单条日志详情
  */
-export function getLogDetail(id: string): { requestBody: string | null; responseBody: string | null } | null {
+export function getLogDetail(id: string): LogDetailRow | null {
   if (!db) return null;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stmt = (db as any).db.prepare('SELECT request_body as requestBody, response_body as responseBody FROM requests WHERE id = ?');
     const row = stmt.get(id);
     return row || null;
@@ -190,6 +249,7 @@ export function getLogDetail(id: string): { requestBody: string | null; response
 export function getLogRequestBody(id: string): string | null {
   if (!db) return null;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stmt = (db as any).db.prepare('SELECT request_body FROM requests WHERE id = ?');
     const row = stmt.get(id);
     return row?.request_body || null;
@@ -204,6 +264,7 @@ export function getLogRequestBody(id: string): string | null {
 export function getLogResponseBody(id: string): string | null {
   if (!db) return null;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stmt = (db as any).db.prepare('SELECT response_body FROM requests WHERE id = ?');
     const row = stmt.get(id);
     return row?.response_body || null;
@@ -212,14 +273,26 @@ export function getLogResponseBody(id: string): string | null {
   }
 }
 
+interface OverallStatsRaw {
+  total_requests?: number;
+  success_requests?: number;
+  total_tokens?: number;
+  avg_duration?: number;
+}
+
+interface CacheStatsRaw {
+  cache_hits?: number;
+  saved_tokens?: number;
+}
+
 /**
  * 获取总体统计
  */
-export function getOverallStats(): any {
+export function getOverallStats(): OverallStats {
   if (!db) return createEmptyOverallStats();
 
-  const raw: any = db.getOverallStats();
-  const cacheRaw: any = db.getOverallCacheStats(); // 从数据库获取缓存统计
+  const raw: OverallStatsRaw = db.getOverallStats() as OverallStatsRaw;
+  const cacheRaw: CacheStatsRaw = db.getOverallCacheStats() as CacheStatsRaw; // 从数据库获取缓存统计
   
   const totalRequests = raw?.total_requests || 0;
   const cacheHits = cacheRaw?.cache_hits || 0;
@@ -233,8 +306,8 @@ export function getOverallStats(): any {
     actualRequests: actualRequests, // 实际请求数（不含缓存命中）
     successRequests: raw?.success_requests || 0,
     errorRequests: (raw?.total_requests || 0) - (raw?.success_requests || 0),
-    successRate: raw?.total_requests > 0 
-      ? Math.round((raw?.success_requests / raw?.total_requests) * 100) 
+    successRate: raw?.total_requests && raw.total_requests > 0 
+      ? Math.round(((raw?.success_requests || 0) / raw.total_requests) * 100) 
       : 0,
     totalTokens: totalTokens,
     actualTokens: actualTokens, // 实际 Token 数（不含缓存节省）
@@ -251,7 +324,7 @@ export function getOverallStats(): any {
 /**
  * 获取过去 7 天统计
  */
-export function getLast7DaysStats(): any[] {
+export function getLast7DaysStats(): WeeklyStatsRow[] {
   return db?.getLast7DaysStats() || [];
 }
 
@@ -271,7 +344,7 @@ export async function recoverFromLogs(days: number = 7): Promise<number> {
 }
 
 // 辅助函数
-function createEmptyDailyStats() {
+function createEmptyDailyStats(): DailyStats {
   return {
     date: new Date().toISOString().split('T')[0],
     totalRequests: 0,
@@ -281,23 +354,32 @@ function createEmptyDailyStats() {
     totalCompletionTokens: 0,
     totalTokens: 0,
     avgDuration: 0,
-    estimatedCost: 0
+    estimatedCost: 0,
+    contextTruncated: 0,
+    savedTokens: 0,
+    privacyFiltered: 0
   };
 }
 
-function createEmptyOverallStats() {
+function createEmptyOverallStats(): OverallStats {
   return {
     totalRequests: 0,
+    actualRequests: 0,
     successRequests: 0,
     errorRequests: 0,
     successRate: 0,
     totalTokens: 0,
+    actualTokens: 0,
     totalCost: 0,
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    cacheHits: 0,
+    cacheHitRate: 0,
+    savedTokens: 0,
+    avgResponseTime: 0
   };
 }
 
-function calculateDayCost(raw: any): number {
+function calculateDayCost(raw: DailyStatsRaw | undefined): number {
   if (!raw) return 0;
   // 简化计算，实际应按模型分别计算
   const tokens = raw.total_tokens || 0;

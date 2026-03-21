@@ -169,11 +169,26 @@ function addDetail(
  * 过滤请求体（只过滤用户当前输入的消息）
  */
 export interface FilterObjectResult {
-  data: any;
+  data: Record<string, unknown>;
   categories: FilterCategory[];
 }
 
-export function filterObject(obj: any, config?: FilterConfig): FilterObjectResult {
+interface ChatMessage {
+  role: string;
+  content: string | ContentPart[];
+}
+
+interface ContentPart {
+  type: string;
+  text?: string;
+}
+
+interface RequestBody {
+  messages?: ChatMessage[];
+  [key: string]: unknown;
+}
+
+export function filterObject(obj: RequestBody, config?: FilterConfig): FilterObjectResult {
   const allCategories = new Set<FilterCategory>();
   
   // 过滤用户当前输入的消息（messages 数组中最后一条 user 消息）
@@ -188,8 +203,8 @@ export function filterObject(obj: any, config?: FilterConfig): FilterObjectResul
           contentText = msg.content;
         } else if (Array.isArray(msg.content)) {
           contentText = msg.content
-            .filter((part: any) => part.type === 'text')
-            .map((part: any) => part.text)
+            .filter((part: ContentPart) => part.type === 'text')
+            .map((part: ContentPart) => part.text || '')
             .join('');
         }
         
@@ -201,7 +216,7 @@ export function filterObject(obj: any, config?: FilterConfig): FilterObjectResul
             if (typeof msg.content === 'string') {
               msg.content = filterResult.text;
             } else if (Array.isArray(msg.content)) {
-              const textPart = msg.content.find((part: any) => part.type === 'text');
+              const textPart = msg.content.find((part: ContentPart) => part.type === 'text');
               if (textPart) {
                 textPart.text = filterResult.text;
               }

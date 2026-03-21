@@ -4,14 +4,16 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { ZodObject, ZodError } from 'zod';
+import { ZodObject, ZodError, ZodTypeAny } from 'zod';
 import { ValidationError } from './errors.js';
+
+type ZodSchema = ZodObject<Record<string, ZodTypeAny>>;
 
 /**
  * Zod 验证中间件
  * 验证请求体、查询参数、路径参数
  */
-export const validate = (schema: ZodObject<any>) => {
+export const validate = (schema: ZodSchema) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       await schema.parseAsync({
@@ -37,7 +39,7 @@ export const validate = (schema: ZodObject<any>) => {
 /**
  * 可选验证（不阻止请求，只记录警告）
  */
-export const optionalValidate = (schema: ZodObject<any>) => {
+export const optionalValidate = (schema: ZodSchema) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       await schema.parseAsync({

@@ -5,6 +5,7 @@
 
 import { TTLMap } from './ttl-map.js';
 import { logger } from '../utils/logger.js';
+import type { ChatCompletionRequest, ChatCompletionResponse } from '../types/index.js';
 import crypto from 'crypto';
 
 export interface LoopGuardConfig {
@@ -20,14 +21,14 @@ export interface LoopGuardConfig {
 
 export interface GuardResult {
   action: 'forward' | 'cache' | 'hit' | 'stop';
-  response?: any;
+  response?: ChatCompletionResponse;
   count: number;
 }
 
 export class LoopGuard {
   private config: Required<LoopGuardConfig>;
   private counts: TTLMap<string, number>;
-  private cache: TTLMap<string, any>;
+  private cache: TTLMap<string, ChatCompletionResponse>;
 
   constructor(config: LoopGuardConfig = {}) {
     this.config = {
@@ -38,7 +39,7 @@ export class LoopGuard {
     };
 
     this.counts = new TTLMap<string, number>();
-    this.cache = new TTLMap<string, any>();
+    this.cache = new TTLMap<string, ChatCompletionResponse>();
 
     logger.info('[LoopGuard] 初始化完成', this.config);
   }
@@ -47,7 +48,7 @@ export class LoopGuard {
    * 检查请求是否为循环
    * @returns GuardResult 处理结果
    */
-  check(reqBody: any): GuardResult {
+  check(reqBody: ChatCompletionRequest): GuardResult {
     const key = this.hashRequest(reqBody);
     const count = (this.counts.get(key) || 0) + 1;
 
@@ -83,7 +84,7 @@ export class LoopGuard {
   /**
    * 缓存响应结果
    */
-  cacheResponse(reqBody: any, response: any): void {
+  cacheResponse(reqBody: ChatCompletionRequest, response: ChatCompletionResponse): void {
     const key = this.hashRequest(reqBody);
     this.cache.set(key, response, this.config.cacheTtl);
     logger.debug(`[LoopGuard] 缓存响应: ${key.slice(0, 8)}...`);
@@ -92,15 +93,15 @@ export class LoopGuard {
   /**
    * 生成请求指纹
    */
-  private hashRequest(body: any): string {
+  private hashRequest(body: ChatCompletionRequest): string {
     // 提取关键字段生成指纹
     const data = {
       model: body.model,
-      messages: body.messages?.map((m: any) => ({
+      messages: body.messages?.map((m) => ({
         role: m.role,
-        content: m.content?.slice(0, 200) // 只取前200字符
+        content: typeof m.content === 'string' ? m.content.slice(0, 200) : m.content
       })),
-      tools: body.tools?.map((t: any) => t.name || t.function?.name).sort()
+      tools: body.tools?.map((t) => t.function?.name).sort()
     };
 
     return crypto
@@ -112,7 +113,7 @@ export class LoopGuard {
   /**
    * 创建熔断响应
    */
-  private createStopResponse(): any {
+  private createStopResponse(): ChatCompletionResponse {
     return {
       id: `loop-guard-${Date.now()}`,
       object: 'chat.completion',

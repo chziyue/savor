@@ -166,19 +166,7 @@ function loadUserConfig(): Partial<SavorConfig> {
   return {};
 }
 
-function deepMerge(target: any, source: any): any {
-  const result = { ...target };
-  for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(target[key] || {}, source[key]);
-    } else {
-      result[key] = source[key];
-    }
-  }
-  return result;
-}
-
-export const Config: SavorConfig = deepMerge(defaultConfig, loadUserConfig());
+export const Config: SavorConfig = { ...defaultConfig, ...loadUserConfig() } as SavorConfig;
 
 export function loadConfig(): SavorConfig {
   return Config;

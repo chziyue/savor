@@ -11,6 +11,20 @@ import { recordRequest } from '../utils/stats.js';
 import type { SavorConfig } from '../config/index.js';
 import type { ProxyDependencies, ILogger, ILoopGuard, IRateLimiter, ITraceLogger, IStats } from './types.js';
 
+interface StatsRecordData {
+  requestId: string;
+  model: string;
+  tokens: number;
+  duration: string;
+  cost: string;
+  status: 'success' | 'error' | 'rate_limited';
+  promptTokens?: number;
+  completionTokens?: number;
+  contextTruncated?: boolean;
+  savedTokens?: number;
+  filtered?: boolean;
+}
+
 /**
  * Logger 适配器（包装现有的 logger）
  */
@@ -25,13 +39,16 @@ export class LoggerAdapter implements ILogger {
  * Stats 适配器（包装现有的 recordRequest）
  */
 export class StatsAdapter implements IStats {
-  record(data: any) {
+  record(data: StatsRecordData) {
     // 转换为 recordRequest 需要的格式
     recordRequest({
       ...data,
       totalTokens: data.tokens,
       id: data.requestId,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
+      promptTokens: data.promptTokens ?? 0,
+      completionTokens: data.completionTokens ?? 0,
+      duration: parseInt(data.duration, 10) || 0,
     });
   }
 }

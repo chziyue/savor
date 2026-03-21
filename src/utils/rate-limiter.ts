@@ -4,6 +4,7 @@
  */
 
 import { logger } from '../utils/logger.js';
+import type { Request } from 'express';
 
 export interface RateLimiterConfig {
   requestsPerMinute: number;  // 每分钟最大请求数
@@ -28,6 +29,27 @@ export interface RateLimitResult {
   autoUnlockAt?: string;      // 自动解锁时间（如果配置了定时解锁）
 }
 
+export interface ClientStatus {
+  clientId: string;
+  allowed: boolean;
+  remaining: number;
+  locked: boolean;
+  lockTime?: string;
+  autoUnlockAt?: string;
+  requestCount: number;
+  exists?: boolean;
+  message?: string;
+  resetTime?: string;
+}
+
+export interface LockedClientInfo {
+  clientId: string;
+  lockTime: string;
+  lockedDuration: number;
+  autoUnlockAt?: string;
+  autoUnlockIn?: number;
+}
+
 export class RateLimiter {
   private config: RateLimiterConfig;
   private windowMs: number;
@@ -48,14 +70,14 @@ export class RateLimiter {
    * 从请求中提取客户端 ID
    * 优先级：X-Forwarded-For > X-Real-IP > remoteAddress
    */
-  getClientId(req: any): string {
-    const forwarded = req.headers?.['x-forwarded-for'];
-    const realIp = req.headers?.['x-real-ip'];
-    const remoteAddr = req.headers?.['x-remote-addr'] || req.ip || req.socket?.remoteAddress || 'unknown';
+  getClientId(req: Request): string {
+    const forwarded = req.headers['x-forwarded-for'] as string | undefined;
+    const realIp = req.headers['x-real-ip'] as string | undefined;
+    const remoteAddr = req.headers['x-remote-addr'] as string | undefined || req.ip || req.socket?.remoteAddress || 'unknown';
     
     // X-Forwarded-For 可能包含多个 IP，取第一个
     if (forwarded) {
-      const ips = forwarded.split(',').map((ip: string) => ip.trim());
+      const ips = forwarded.split(',').map((ip) => ip.trim());
       return ips[0] || remoteAddr;
     }
     
@@ -91,7 +113,7 @@ export class RateLimiter {
   /**
    * 检查是否允许请求（针对特定客户端）
    */
-  check(req: any): RateLimitResult {
+  check(req: Request): RateLimitResult {
     const clientId = this.getClientId(req);
     const state = this.getUserState(clientId);
     const now = Date.now();
@@ -222,7 +244,7 @@ export class RateLimiter {
     autoUnlockAt?: string;
     requestCount: number;
   }> {
-    const statuses: any[] = [];
+    const statuses: ClientStatus[] = [];
 
     for (const [clientId, state] of this.users.entries()) {
       // 清理过期请求
@@ -245,13 +267,17 @@ export class RateLimiter {
   /**
    * 获取特定客户端状态
    */
-  getClientStatus(clientId: string): any {
+  getClientStatus(clientId: string): ClientStatus {
     const state = this.users.get(clientId);
     if (!state) {
       return {
         clientId,
         exists: false,
-        message: '该客户端无请求记录'
+        message: '该客户端无请求记录',
+        allowed: false,
+        remaining: 0,
+        locked: false,
+        requestCount: 0
       };
     }
 
@@ -346,11 +372,11 @@ export class RateLimiter {
     autoUnlockIn?: number;
   }> {
     const now = Date.now();
-    const locked: any[] = [];
+    const locked: LockedClientInfo[] = [];
 
     for (const [clientId, state] of this.users.entries()) {
       if (state.isLocked && state.lockTime) {
-        const info: any = {
+        const info: LockedClientInfo = {
           clientId,
           lockTime: new Date(state.lockTime).toISOString(),
           lockedDuration: Math.floor((now - state.lockTime) / 1000)

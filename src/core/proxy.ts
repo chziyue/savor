@@ -8,12 +8,13 @@ import { logger } from '../utils/logger.js';
 import { recordRequest, initStats } from '../utils/stats.js';
 import { LoopGuard } from '../cache/index.js';
 import { TraceLogger, traceStep, setTraceLogger } from '../utils/trace-logger.js';
-import { RateLimiter } from '../utils/rate-limiter.js';
+import { RateLimiter, type ClientStatus, type LockedClientInfo } from '../utils/rate-limiter.js';
 import { filterObject, getFilterMarkers, type FilterObjectResult } from '../utils/filter.js';
 import { BadGatewayError } from '../utils/errors.js';
 import { createDependencies } from './factory.js';
 import type { SavorConfig } from '../config/index.js';
 import type { ProxyDependencies, ILogger } from './types.js';
+import type { ChatCompletionRequest, ChatCompletionResponse, ChatMessage } from '../types/index.js';
 
 // 初始化统计模块
 initStats();
@@ -355,7 +356,7 @@ export class ProxyServer {
       const duration = Date.now() - startTime;
       
       // 详细错误日志
-      const errorDetails: Record<string, any> = {
+      const errorDetails: Record<string, unknown> = {
         errorMessage: error instanceof Error ? error.message : String(error),
         duration: `${duration}ms`,
       };
@@ -366,20 +367,22 @@ export class ProxyServer {
         errorDetails.errorStack = error.stack;
         
         // 添加 cause（fetch 失败的真正原因）
-        if (error.cause) {
-          errorDetails.cause = error.cause;
-          if (error.cause instanceof Error) {
-            errorDetails.causeMessage = error.cause.message;
-            errorDetails.causeCode = (error.cause as any).code;
+        const cause = (error as { cause?: unknown }).cause;
+        if (cause) {
+          errorDetails.cause = cause;
+          if (cause instanceof Error) {
+            errorDetails.causeMessage = cause.message;
+            errorDetails.causeCode = (cause as { code?: string }).code;
           }
         }
         
         // 添加系统错误码
-        if ((error as any).code) {
-          errorDetails.errorCode = (error as any).code;
+        const sysError = error as { code?: string; errno?: number };
+        if (sysError.code) {
+          errorDetails.errorCode = sysError.code;
         }
-        if ((error as any).errno) {
-          errorDetails.errorNo = (error as any).errno;
+        if (sysError.errno) {
+          errorDetails.errorNo = sysError.errno;
         }
       }
       
@@ -428,7 +431,7 @@ export class ProxyServer {
     requestId: string,
     upstreamRes: globalThis.Response,
     res: ExpressResponse,
-    body: any,
+    body: ChatCompletionRequest,
     startTime: number,
     filterMarkers?: string[],
     contextTruncated: boolean = false,
@@ -539,13 +542,13 @@ export class ProxyServer {
     requestId: string,
     upstreamRes: globalThis.Response,
     res: ExpressResponse,
-    body: any,
+    body: ChatCompletionRequest,
     startTime: number,
     filterMarkers?: string[],
     contextTruncated: boolean = false,
     savedTokens: number = 0
   ): Promise<void> {
-    const data: any = await upstreamRes.json();
+    const data: ChatCompletionResponse = await upstreamRes.json() as ChatCompletionResponse;
     
     // ========== 步骤3: 记录从大模型接收的响应 ==========
     if (this.traceLogger) {
@@ -619,7 +622,7 @@ export class ProxyServer {
   /**
    * 获取所有客户端限流状态（公开方法）
    */
-  getAllRateLimitStatus(): any[] {
+  getAllRateLimitStatus(): ClientStatus[] {
     if (!this.rateLimiter) {
       return [];
     }
@@ -629,7 +632,7 @@ export class ProxyServer {
   /**
    * 获取特定客户端限流状态（公开方法）
    */
-  getClientRateLimitStatus(clientId: string): any {
+  getClientRateLimitStatus(clientId: string): ClientStatus | { enabled: false; message: string } {
     if (!this.rateLimiter) {
       return { enabled: false, message: '限流器未启用' };
     }
@@ -649,7 +652,7 @@ export class ProxyServer {
   /**
    * 获取锁定中的客户端列表（公开方法）
    */
-  getLockedClients(): any[] {
+  getLockedClients(): LockedClientInfo[] {
     if (!this.rateLimiter) {
       return [];
     }
@@ -677,7 +680,7 @@ export class ProxyServer {
    * @param maxRounds 保留的轮数
    * @returns 截断后的消息数组
    */
-  private truncateContext(messages: any[], maxRounds: number): { messages: any[]; truncated: boolean; removedCount: number; savedTokens: number; stats?: { chineseChars: number; otherChars: number; chineseTokens: number; otherTokens: number } } {
+  private truncateContext(messages: ChatMessage[], maxRounds: number): { messages: ChatMessage[]; truncated: boolean; removedCount: number; savedTokens: number; stats?: { chineseChars: number; otherChars: number; chineseTokens: number; otherTokens: number } } {
     if (!messages || messages.length === 0) {
       return { messages, truncated: false, removedCount: 0, savedTokens: 0 };
     }
@@ -741,7 +744,7 @@ export class ProxyServer {
    * 估算消息的 Token 数（改进算法：中文1.5倍，英文1倍，每字符约0.6-0.8 token）
    * 测试调优：根据实际对比结果调整系数
    */
-  private estimateTokens(msg: any): number {
+  private estimateTokens(msg: ChatMessage): number {
     const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
     
     // 统计各类字符

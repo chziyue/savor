@@ -12,7 +12,7 @@ export interface TraceStep {
   direction: 'in' | 'out'; // 方向：接收/发送
   source: string;         // 来源/目标标识
   timestamp: number;      // 时间戳
-  data: any;              // 完整数据内容
+  data: unknown;          // 完整数据内容
 }
 
 export interface TraceRecord {

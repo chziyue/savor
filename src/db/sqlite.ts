@@ -25,6 +25,27 @@ export interface RequestRecord {
   savedTokens?: number;  // 节省的 Token 数（上下文裁切）
 }
 
+export interface WeeklyStatsRow {
+  date: string;
+  totalRequests: number;
+  successRequests: number;
+  totalTokens: number;
+  avgDuration: number;
+}
+
+export interface LogSummaryRow {
+  id: string;
+  timestamp: number;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  duration: number;
+  status: 'success' | 'error' | 'rate_limited';
+  errorMessage?: string;
+  filterMarkers?: string;
+}
+
 export class StatsDatabase {
   private db: Database.Database;
   private dbPath: string;
@@ -401,18 +422,18 @@ export class StatsDatabase {
       LIMIT ?
     `);
 
-    const rows = stmt.all(limit) as any[];
+    const rows = stmt.all(limit) as LogSummaryRow[];
     // 解析 JSON 字符串
     return rows.map(row => ({
       ...row,
       filterMarkers: row.filterMarkers ? JSON.parse(row.filterMarkers) : undefined
-    })) as RequestRecord[];
+    }));
   }
 
-  /**
-   * 获取过去7天统计
-   */
-  getLast7DaysStats(): any[] {
+/**
+ * 获取过去7天统计
+ */
+  getLast7DaysStats(): WeeklyStatsRow[] {
     const stmt = this.db.prepare(`
       SELECT 
         date(timestamp / 1000, 'unixepoch', 'localtime') as date,
@@ -429,7 +450,7 @@ export class StatsDatabase {
     // 6天前的0点 = 最近7天（含今天）
     const sixDaysAgo = Date.now() - 6 * 24 * 60 * 60 * 1000;
     const sixDaysAgoStart = new Date(sixDaysAgo).setHours(0, 0, 0, 0);
-    return stmt.all(sixDaysAgoStart);
+    return stmt.all(sixDaysAgoStart) as WeeklyStatsRow[];
   }
 
   /**
@@ -495,7 +516,7 @@ export class StatsDatabase {
   /**
    * 获取最近 N 条请求摘要（不包含 requestBody/responseBody）
    */
-  getRecentLogsSummary(limit: number = 100): any[] {
+  getRecentLogsSummary(limit: number = 100): LogSummaryRow[] {
     const stmt = this.db.prepare(`
       SELECT
         id, timestamp, model, prompt_tokens as promptTokens,
@@ -507,7 +528,7 @@ export class StatsDatabase {
       LIMIT ?
     `);
 
-    const rows = stmt.all(limit) as any[];
+    const rows = stmt.all(limit) as LogSummaryRow[];
     return rows.map(row => ({
       ...row,
       filterMarkers: row.filterMarkers ? JSON.parse(row.filterMarkers) : undefined
