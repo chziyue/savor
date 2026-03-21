@@ -40,21 +40,25 @@ export class ProxyServer {
     
     this.logger = finalDeps.logger;
     
-    // 初始化循环保护
-    if (config.features?.loopGuard !== false) {
+    // 初始化循环保护（兼容新旧配置格式）
+    const loopGuardEnabled = config.loopGuard?.enabled ?? (config.features?.loopGuard !== false);
+    if (loopGuardEnabled) {
       // 如果注入了 loopGuard，使用注入的
       if (finalDeps.loopGuard) {
         this.loopGuard = finalDeps.loopGuard as unknown as LoopGuard;
       }
-      this.logger.info('[Proxy] 循环保护已启用', config.loopGuardConfig || {});
+      const lgConfig = config.loopGuard || config.loopGuardConfig || {};
+      this.logger.info('[Proxy] 循环保护已启用', lgConfig);
     }
 
-    // 初始化限流器
-    if (config.features?.rateLimit !== false && config.rateLimitConfig) {
+    // 初始化限流器（兼容新旧配置格式）
+    const rateLimitEnabled = config.rateLimit?.enabled ?? (config.features?.rateLimit !== false);
+    const rlConfig = config.rateLimit || config.rateLimitConfig;
+    if (rateLimitEnabled && rlConfig) {
       if (finalDeps.rateLimiter) {
         this.rateLimiter = finalDeps.rateLimiter as unknown as RateLimiter;
       }
-      this.logger.info('[Proxy] 限流器已启用', config.rateLimitConfig);
+      this.logger.info('[Proxy] 限流器已启用', rlConfig);
     }
 
     // 初始化全链路追踪

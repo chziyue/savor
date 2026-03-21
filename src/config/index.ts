@@ -37,9 +37,7 @@ const defaultConfig = {
   // Advanced configuration
   features: {
     stats: true,
-    rateLimit: true,
-    webDashboard: true,
-    loopGuard: true
+    webDashboard: true
   },
   contextTruncation: {
     enabled: false,
@@ -50,13 +48,15 @@ const defaultConfig = {
     categories: { privacy: true },
     replacements: { privacy: '<privacy-filtered>' }
   },
-  loopGuardConfig: {
+  loopGuard: {
+    enabled: true,
     cacheAfter: 2,
     stopAfter: 4,
     countWindow: 60000,
     cacheTtl: 300000
   },
-  rateLimitConfig: {
+  rateLimit: {
+    enabled: true,
     requestsPerMinute: 20,
     windowMs: 60000,
     permanentLock: 60
@@ -101,17 +101,30 @@ export interface SavorConfig {
   };
   features: {
     stats: boolean;
-    rateLimit: boolean;
     webDashboard: boolean;
-    loopGuard?: boolean;
+    rateLimit?: boolean;     // 兼容旧格式
+    loopGuard?: boolean;     // 兼容旧格式
   };
-  loopGuardConfig?: {
+  loopGuard?: {
+    enabled?: boolean;
+    cacheAfter?: number;
+    stopAfter?: number;
+    countWindow?: number;
+    cacheTtl?: number;
+  };
+  loopGuardConfig?: {        // 兼容旧格式
     cacheAfter: number;
     stopAfter: number;
     countWindow: number;
     cacheTtl: number;
   };
-  rateLimitConfig?: {
+  rateLimit?: {
+    enabled?: boolean;
+    requestsPerMinute?: number;
+    windowMs?: number;
+    permanentLock?: boolean | number;
+  };
+  rateLimitConfig?: {        // 兼容旧格式
     requestsPerMinute: number;
     windowMs?: number;
     permanentLock?: boolean | number;

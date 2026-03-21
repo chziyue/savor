@@ -45,6 +45,14 @@ export interface FilterConfig {
 }
 
 /**
+ * 简化配置格式（兼容旧格式）
+ */
+interface SimpleFilterConfig {
+  enabled?: boolean;
+  privacy?: boolean;
+}
+
+/**
  * 默认配置
  */
 const DEFAULT_CONFIG: FilterConfig = {
@@ -97,19 +105,35 @@ export function getFilterConfig(): FilterConfig {
 /**
  * 过滤文本内容
  */
-export function filterText(text: string, config?: FilterConfig): FilterResult {
-  const cfg: FilterConfig = {
-    ...currentConfig,
-    ...(config || {}),
-    categories: {
-      ...currentConfig.categories,
-      ...(config?.categories || {}),
-    },
-    replacements: {
-      ...currentConfig.replacements,
-      ...(config?.replacements || {}),
-    },
-  };
+export function filterText(text: string, config?: FilterConfig | SimpleFilterConfig): FilterResult {
+  // 兼容简化格式：{ enabled: true, privacy: true }
+  let normalizedConfig: FilterConfig;
+  
+  if (config && 'privacy' in config) {
+    // 简化格式，转换为完整格式
+    const simpleConfig = config as SimpleFilterConfig;
+    normalizedConfig = {
+      enabled: simpleConfig.enabled ?? true,
+      categories: { privacy: simpleConfig.privacy ?? true },
+      replacements: { privacy: '<privacy-filtered>' }
+    };
+  } else {
+    // 完整格式
+    normalizedConfig = {
+      ...currentConfig,
+      ...(config || {}),
+      categories: {
+        ...currentConfig.categories,
+        ...((config as FilterConfig)?.categories || {}),
+      },
+      replacements: {
+        ...currentConfig.replacements,
+        ...((config as FilterConfig)?.replacements || {}),
+      },
+    };
+  }
+  
+  const cfg = normalizedConfig;
   const result: FilterResult = {
     text,
     filtered: false,

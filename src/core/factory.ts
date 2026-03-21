@@ -61,9 +61,10 @@ export function createDependencies(config: SavorConfig): ProxyDependencies {
     logger: new LoggerAdapter(),
   };
 
-  // 循环保护
-  if (config.features?.loopGuard !== false) {
-    const lgConfig = config.loopGuardConfig || {
+  // 循环保护（兼容新旧配置格式）
+  const loopGuardEnabled = config.loopGuard?.enabled ?? (config.features?.loopGuard !== false);
+  if (loopGuardEnabled) {
+    const lgConfig = config.loopGuard || config.loopGuardConfig || {
       cacheAfter: 2,
       stopAfter: 4,
       countWindow: 60000,
@@ -72,9 +73,15 @@ export function createDependencies(config: SavorConfig): ProxyDependencies {
     deps.loopGuard = new LoopGuard(lgConfig) as unknown as ILoopGuard;
   }
 
-  // 限流器
-  if (config.features?.rateLimit !== false && config.rateLimitConfig) {
-    deps.rateLimiter = new RateLimiter(config.rateLimitConfig) as unknown as IRateLimiter;
+  // 限流器（兼容新旧配置格式）
+  const rateLimitEnabled = config.rateLimit?.enabled ?? (config.features?.rateLimit !== false);
+  const rlConfig = config.rateLimit || config.rateLimitConfig;
+  if (rateLimitEnabled && rlConfig?.requestsPerMinute) {
+    deps.rateLimiter = new RateLimiter({
+      requestsPerMinute: rlConfig.requestsPerMinute,
+      windowMs: rlConfig.windowMs,
+      permanentLock: rlConfig.permanentLock
+    }) as unknown as IRateLimiter;
   }
 
   // 追踪日志

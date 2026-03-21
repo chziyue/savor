@@ -40,7 +40,9 @@ module.exports = {
       'http://127.0.0.1:3456',
       'https://localhost:3457',
       'https://127.0.0.1:3457'
-    ]
+    ],
+    credentials: true,
+    maxAge: 86400
   },
   
   // HTTPS configuration / HTTPS 配置
@@ -56,9 +58,7 @@ module.exports = {
   // Feature toggles / 功能开关
   features: {
     stats: true,         // Request statistics / 统计记录（Web 看板数据来源）
-    rateLimit: true,     // Rate limiting / 限流控制（防止 API 滥用）
-    webDashboard: true,  // Web dashboard / Web 看板
-    loopGuard: true      // Loop protection / 循环保护（打断工具无限循环）
+    webDashboard: true   // Web dashboard / Web 看板
   },
   
   // Context truncation / 上下文截断
@@ -70,7 +70,54 @@ module.exports = {
   
   // Content filter / 内容过滤
   contentFilter: {
-    enabled: true,     // Enable / 总开关
-    privacy: true      // Filter sensitive info / 过滤隐私信息（电话、身份证、邮箱等）
+    enabled: true,                          // Enable / 总开关
+    categories: { privacy: true },          // Filter categories / 过滤类别
+    replacements: { privacy: '<privacy-filtered>' }  // Replacement text / 替换文本
+  },
+  
+  // Loop guard / 循环保护
+  loopGuard: {
+    enabled: true,       // Enable / 开关
+    cacheAfter: 2,       // Start caching after N requests / 第 N 次开始缓存
+    stopAfter: 4,        // Break loop after N requests / 第 N 次熔断
+    countWindow: 60000,  // Count window (ms) / 计数窗口（毫秒）
+    cacheTtl: 300000     // Cache TTL (ms) / 缓存过期时间（毫秒）
+  },
+  
+  // Rate limit / 限流
+  rateLimit: {
+    enabled: true,           // Enable / 开关
+    requestsPerMinute: 20,   // Max requests per minute / 每分钟最大请求数
+    windowMs: 60000,         // Time window (ms) / 时间窗口（毫秒）
+    permanentLock: 60        // Lock duration (minutes), false = no lock / 锁定时长（分钟）
+  },
+  
+  // Logging / 日志
+  logLevel: 'info',    // Log level: debug, info, warn, error / 日志级别
+  logDir: './logs',    // Log directory / 日志目录
+  
+  // Timeout / 超时
+  timeout: {
+    upstream: 60000    // Upstream API timeout (ms) / 上游 API 超时（毫秒）
+  },
+  
+  // Dashboard / 看板
+  dashboard: {
+    refreshInterval: 5000    // Auto refresh interval (ms) / 自动刷新间隔（毫秒）
+  },
+  
+  // Token estimation / Token 估算系数
+  tokenEstimation: {
+    chineseChar: 1.8,    // Chinese character coefficient / 中文字符系数
+    englishChar: 0.5,    // English character coefficient / 英文字符系数
+    digitChar: 0.3,      // Digit coefficient / 数字系数
+    jsonStructChar: 1.3  // JSON structure character coefficient / JSON 结构字符系数
+  },
+  
+  // Full trace / 全链路追踪
+  fullTrace: {
+    enabled: false,              // Enable / 开关
+    traceDir: './traces',        // Trace directory / 追踪目录
+    maxFileSize: 104857600       // Max file size (100MB) / 最大文件大小
   }
 };
