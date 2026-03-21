@@ -98,7 +98,18 @@ export function getFilterConfig(): FilterConfig {
  * 过滤文本内容
  */
 export function filterText(text: string, config?: FilterConfig): FilterResult {
-  const cfg = config || currentConfig;
+  const cfg: FilterConfig = {
+    ...currentConfig,
+    ...(config || {}),
+    categories: {
+      ...currentConfig.categories,
+      ...(config?.categories || {}),
+    },
+    replacements: {
+      ...currentConfig.replacements,
+      ...(config?.replacements || {}),
+    },
+  };
   const result: FilterResult = {
     text,
     filtered: false,
@@ -118,7 +129,7 @@ export function filterText(text: string, config?: FilterConfig): FilterResult {
     const lineNum = i + 1;
 
     // 个人隐私（包含手机号、身份证、邮箱、银行卡、Token、密码、私钥）
-    if (cfg.categories.privacy) {
+    if (cfg.categories?.privacy) {
       const privacyChecks = [
         { pattern: PATTERNS.privacy.phone, type: '手机号' },
         { pattern: PATTERNS.privacy.idCard, type: '身份证号' },
@@ -131,8 +142,8 @@ export function filterText(text: string, config?: FilterConfig): FilterResult {
 
       for (const check of privacyChecks) {
         if (check.pattern.test(line)) {
-          line = line.replace(check.pattern, cfg.replacements.privacy);
-          addDetail(result, 'privacy', check.type, lineNum, cfg.replacements.privacy);
+          line = line.replace(check.pattern, cfg.replacements?.privacy || '<filtered>');
+          addDetail(result, 'privacy', check.type, lineNum, cfg.replacements?.privacy || '<filtered>');
         }
       }
     }
