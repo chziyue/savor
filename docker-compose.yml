@@ -1,0 +1,16 @@
+services:
+  savor:
+    image: chziyue/savor:latest
+    container_name: savor
+    restart: unless-stopped
+    ports:
+      - "3456:3456"
+      - "3457:3457"
+    environment:
+      - TZ=Asia/Shanghai
+      - NODE_ENV=production
+    volumes:
+      - ./config.js:/app/config.js:ro
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./certs:/app/certs

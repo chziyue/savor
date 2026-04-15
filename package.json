@@ -1,0 +1,69 @@
+{
+  "name": "savor",
+  "version": "0.6.1",
+  "description": "兼容 OpenAI 和 Anthropic 协议的 LLM 代理网关 - 省钱、省 Token、实时监控",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:config": "CONFIG=openclaw tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node bin/start.js",
+    "start:config": "node bin/start.js openclaw",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "keywords": [
+    "openclaw",
+    "llm",
+    "proxy",
+    "gateway",
+    "cache",
+    "cost-monitor"
+  ],
+  "author": "chziyue",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chziyue/savor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chziyue/savor/issues"
+  },
+  "homepage": "https://github.com/chziyue/savor#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^8.1.0",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.1.3",
+    "uuid": "^9.0.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.7",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.2",
+    "typescript-eslint": "^8.57.1",
+    "vitest": "^3.0.0"
+  }
+}
