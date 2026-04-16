@@ -36,6 +36,16 @@ import type { AnthropicMessagesRequest, AnthropicMessagesResponse, AnthropicMess
 // 初始化统计模块
 initStats();
 
+/**
+ * Token 估算用的字符正则常量
+ */
+const CHAR_PATTERNS = {
+  chinese: /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g,
+  english: /[a-zA-Z]/g,
+  digit: /[0-9]/g,
+  jsonStruct: /[{}[\]:"',\\]/g,
+};
+
 export class ProxyServer {
   private config: SavorConfig;
   private logger: ILogger;
@@ -749,10 +759,10 @@ export class ProxyServer {
       const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
 
       // 批量正则匹配，避免逐字符遍历
-      totalChineseChars += content.match(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g)?.length || 0;
-      totalEnglishChars += content.match(/[a-zA-Z]/g)?.length || 0;
-      totalDigitChars += content.match(/[0-9]/g)?.length || 0;
-      totalJsonStructChars += content.match(/[{}[\]:"',\\]/g)?.length || 0;
+      totalChineseChars += content.match(CHAR_PATTERNS.chinese)?.length || 0;
+      totalEnglishChars += content.match(CHAR_PATTERNS.english)?.length || 0;
+      totalDigitChars += content.match(CHAR_PATTERNS.digit)?.length || 0;
+      totalJsonStructChars += content.match(CHAR_PATTERNS.jsonStruct)?.length || 0;
     }
     
     const chineseTokens = Math.ceil(totalChineseChars * chineseCoeff);
@@ -774,10 +784,10 @@ export class ProxyServer {
     const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
 
     // 批量正则匹配，避免逐字符遍历
-    const chineseChars = content.match(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g)?.length || 0;
-    const englishChars = content.match(/[a-zA-Z]/g)?.length || 0;
-    const digitChars = content.match(/[0-9]/g)?.length || 0;
-    const jsonStructChars = content.match(/[{}[\]:"',\\]/g)?.length || 0;
+    const chineseChars = content.match(CHAR_PATTERNS.chinese)?.length || 0;
+    const englishChars = content.match(CHAR_PATTERNS.english)?.length || 0;
+    const digitChars = content.match(CHAR_PATTERNS.digit)?.length || 0;
+    const jsonStructChars = content.match(CHAR_PATTERNS.jsonStruct)?.length || 0;
 
     // 从配置读取系数，优先读嵌套配置，fallback 到顶层配置（向后兼容）
     const chineseCoeff = this.config.contextTruncation?.tokenEstimation?.chineseChar ?? this.config.tokenEstimation?.chineseChar ?? 1.0;
