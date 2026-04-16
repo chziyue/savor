@@ -361,6 +361,18 @@ commands: {
 
 ## 版本历史
 
+### v0.6.2 (2026-04-16)
+
+- ✅ 协议从 MIT 迁移至 GPL-3.0-or-later
+- ✅ 修复上游响应错误时未检查 status 导致的问题
+- ✅ 修复 catch 块中 body 可能为 undefined 的问题
+- ✅ 修复 migrateAddColumn SQL 注入风险
+- ✅ initStats 添加异常降级处理
+- ✅ 删除重复的 filterTextContent，复用 filter.ts 中的 filterText
+- ✅ 优化 VACUUM 执行频率，仅在删除超过 1000 条记录时执行
+- ✅ 删除未使用的 RateLimiter 导入
+- ✅ 提取 Token 估算字符正则为常量
+
 ### v0.6.1 (2026-04-12)
 
 - ✅ 新增配置文件热更新，修改 config.js 后无需重启服务自动生效
