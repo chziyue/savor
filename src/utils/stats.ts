@@ -91,18 +91,22 @@ let writeQueue: WriteQueue | null = null;
  * 初始化统计模块
  */
 export function initStats(): void {
-  db = new StatsDatabase('./data/stats.db');
-  logBackup = new LogBackup('./logs');
-  
-  // 初始化异步写入队列
-  writeQueue = new WriteQueue({
-    flushIntervalMs: 1000,
-    maxQueueSize: 100,
-    onFlush: (records) => db?.insertBatch(records) ?? 0,
-  });
-  writeQueue.start();
-  
-  logger.info('[Stats] 统计模块已初始化（异步队列模式）');
+  try {
+    db = new StatsDatabase('./data/stats.db');
+    logBackup = new LogBackup('./logs');
+
+    // 初始化异步写入队列
+    writeQueue = new WriteQueue({
+      flushIntervalMs: 1000,
+      maxQueueSize: 100,
+      onFlush: (records) => db?.insertBatch(records) ?? 0,
+    });
+    writeQueue.start();
+
+    logger.info('[Stats] 统计模块已初始化（异步队列模式）');
+  } catch (error) {
+    logger.error('[Stats] 统计模块初始化失败，降级运行', { error });
+  }
 }
 
 /**

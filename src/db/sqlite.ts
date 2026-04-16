@@ -191,27 +191,35 @@ export class StatsDatabase {
     const result = deleteStmt.run(eightDaysAgo);
     
     logger.info(`[StatsDB] 已清理 ${result.changes} 条超过 8 天的记录`);
-    
+
+    // 仅在删除大量记录时才 VACUUM（避免频繁锁定数据库）
+    if (result.changes > 1000) {
+      this.db.exec('VACUUM');
+      logger.info('[StatsDB] VACUUM 完成，空间已回收');
+    }
+
     // 清理对应的 daily_stats 数据
     const eightDaysAgoStr = new Date(eightDaysAgo).toISOString().slice(0, 10);
     const deleteDailyStmt = this.db.prepare('DELETE FROM daily_stats WHERE date < ?');
     deleteDailyStmt.run(eightDaysAgoStr);
-    
-    // 执行 VACUUM 回收空间
-    this.db.exec('VACUUM');
-    logger.info('[StatsDB] VACUUM 完成，空间已回收');
   }
   
   /**
    * 迁移：添加新字段（如果不存在）
    */
   private migrateAddColumn(table: string, column: string, type: string): void {
+    // 验证表名和列名（只允许字母、数字、下划线）
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table) || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(column)) {
+      logger.error(`[StatsDB] 迁移参数无效：${table}.${column}`);
+      return;
+    }
+
     try {
       const stmt = this.db.prepare(`
-        SELECT COUNT(*) as count FROM pragma_table_info('${table}') WHERE name = '${column}'
+        SELECT COUNT(*) as count FROM pragma_table_info(?) WHERE name = ?
       `);
-      const result = stmt.get() as { count: number };
-      
+      const result = stmt.get(table, column) as { count: number };
+
       if (result.count === 0) {
         this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
         logger.info(`[StatsDB] 迁移完成：${table}.${column}`);
@@ -537,9 +545,6 @@ export class StatsDatabase {
     return result.changes;
   }
 
-  /**
-   * 关闭连接
-   */
   /**
    * 获取最近 N 条请求摘要（不包含 requestBody/responseBody）
    */

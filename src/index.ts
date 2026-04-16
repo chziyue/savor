@@ -30,8 +30,6 @@ import { createWebServer } from './web/server.js';
 import { errorHandler, notFoundHandler, asyncHandler } from './utils/error-handler.js';
 import fs from 'fs';
 import path from 'path';
-import { RateLimiter } from './utils/rate-limiter.js';
-
 // 确保日志目录存在
 function ensureLogDir(logDir: string) {
   if (!fs.existsSync(logDir)) {

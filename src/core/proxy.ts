@@ -24,7 +24,7 @@ import { recordRequest, initStats } from '../utils/stats.js';
 import { LoopGuard } from '../cache/index.js';
 import { TraceLogger, traceStep, setTraceLogger } from '../utils/trace-logger.js';
 import { RateLimiter, type ClientStatus, type LockedClientInfo } from '../utils/rate-limiter.js';
-import { filterObject, getFilterMarkers, type FilterObjectResult } from '../utils/filter.js';
+import { filterObject, filterText, getFilterMarkers, type FilterObjectResult } from '../utils/filter.js';
 import { BadGatewayError } from '../utils/errors.js';
 import { createDependencies } from './factory.js';
 import { detectCommand } from './commands.js';
@@ -400,10 +400,10 @@ export class ProxyServer {
       recordRequest({
         id: requestId,
         timestamp: Date.now(),
-        model: body.model || 'unknown',
-        promptTokens: Math.ceil(JSON.stringify(body.messages || {}).length / 4),
+        model: body?.model || 'unknown',
+        promptTokens: Math.ceil(JSON.stringify(body?.messages || {}).length / 4),
         completionTokens: 0,
-        totalTokens: Math.ceil(JSON.stringify(body.messages || {}).length / 4),
+        totalTokens: Math.ceil(JSON.stringify(body?.messages || {}).length / 4),
         duration: duration,
         status: 'error',
         errorMessage: error instanceof Error ? error.message : '未知错误',
@@ -550,6 +550,14 @@ export class ProxyServer {
     contextTruncated: boolean = false,
     savedTokens: number = 0
   ): Promise<void> {
+    // 检查上游响应状态
+    if (!upstreamRes.ok) {
+      const errorText = await upstreamRes.text();
+      logger.error(`[${requestId}] 上游响应错误: ${upstreamRes.status} ${upstreamRes.statusText}`, { body: errorText });
+      res.status(upstreamRes.status).json({ error: { message: `上游响应错误: ${upstreamRes.statusText}`, code: 'UPSTREAM_ERROR' } });
+      return;
+    }
+
     const data: ChatCompletionResponse = await upstreamRes.json() as ChatCompletionResponse;
 
     // ========== 步骤3: 记录从大模型接收的响应 ==========
@@ -1195,7 +1203,7 @@ export class ProxyServer {
         }
 
         if (contentText) {
-          const filterResult = filterTextContent(contentText, config);
+          const filterResult = filterText(contentText, config);
           if (filterResult.filtered) {
             if (typeof msg.content === 'string') {
               body.messages[i].content = filterResult.text;
@@ -1317,34 +1325,4 @@ export class ProxyServer {
       usage: { input_tokens: 0, output_tokens: 1 }
     };
   }
-}
-
-/**
- * 过滤文本内容（简化版本，用于 Anthropic）
- */
-function filterTextContent(
-  text: string,
-  config: { enabled: boolean; categories: { privacy: boolean }; replacements: { privacy: string } }
-): { text: string; filtered: boolean } {
-  if (!config.enabled) {
-    return { text, filtered: false };
-  }
-
-  const patterns = [
-    /(?<!\d)(?:(?:\+?86[- ]?)?(?:1[3-9]\d{9}))(?!\d)/g,
-    /(?<!\d)(?:[1-9]\d{5}(?:18|19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx])(?!\d)/g,
-    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-  ];
-
-  let filteredText = text;
-  let filtered = false;
-
-  for (const pattern of patterns) {
-    if (pattern.test(filteredText)) {
-      filteredText = filteredText.replace(pattern, config.replacements.privacy);
-      filtered = true;
-    }
-  }
-
-  return { text: filteredText, filtered };
 }
