@@ -130,4 +130,17 @@ export class LoopGuard {
       avgResponseTime: 0
     };
   }
+
+  /**
+   * 更新配置（热更新）
+   */
+  updateConfig(config: Partial<LoopGuardConfig>): void {
+    if (config.stopAfter !== undefined) {
+      this.config.stopAfter = config.stopAfter;
+    }
+    if (config.countWindow !== undefined) {
+      this.config.countWindow = config.countWindow;
+    }
+    logger.info('[LoopGuard] 配置已更新', this.config);
+  }
 }

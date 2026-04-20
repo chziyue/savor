@@ -24,7 +24,7 @@ import { recordRequest, initStats } from '../utils/stats.js';
 import { LoopGuard } from '../cache/index.js';
 import { TraceLogger, traceStep, setTraceLogger } from '../utils/trace-logger.js';
 import { RateLimiter, type ClientStatus, type LockedClientInfo } from '../utils/rate-limiter.js';
-import { filterObject, filterText, getFilterMarkers, type FilterObjectResult } from '../utils/filter.js';
+import { filterObject, filterText, getFilterMarkers, updateFilterConfig, type FilterObjectResult } from '../utils/filter.js';
 import { BadGatewayError } from '../utils/errors.js';
 import { createDependencies } from './factory.js';
 import { detectCommand } from './commands.js';
@@ -1334,5 +1334,30 @@ export class ProxyServer {
       stop_reason: 'stop_sequence',
       usage: { input_tokens: 0, output_tokens: 1 }
     };
+  }
+
+  /**
+   * 更新配置（热更新）
+   */
+  updateConfig(newConfig: Partial<SavorConfig>): void {
+    // 更新本地配置引用
+    Object.assign(this.config, newConfig);
+
+    // 更新 LoopGuard 配置
+    if (newConfig.loopGuard && this.loopGuard) {
+      this.loopGuard.updateConfig(newConfig.loopGuard);
+    }
+
+    // 更新 RateLimiter 配置
+    if (newConfig.rateLimit && this.rateLimiter) {
+      this.rateLimiter.updateConfig(newConfig.rateLimit);
+    }
+
+    // 更新内容过滤配置
+    if (newConfig.contentFilter) {
+      updateFilterConfig(newConfig.contentFilter);
+    }
+
+    this.logger.info('[Proxy] 配置已热更新', Object.keys(newConfig));
   }
 }

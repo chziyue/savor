@@ -234,8 +234,8 @@ async function main() {
   }
 
   // 启动配置文件监听（热更新）
-  startConfigWatcher((updatedKeys) => {
-    logger.info('[ConfigWatcher] 配置已热更新', { updatedKeys });
+  startConfigWatcher((updatedKeys, newConfig) => {
+    proxy.updateConfig(newConfig);
   });
 }
 

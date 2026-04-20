@@ -501,7 +501,7 @@ export class RateLimiter {
     const now = Date.now();
     let lockedUsers = 0;
     let activeUsers = 0;
-    
+
     for (const state of this.users.values()) {
       if (state.isLocked) {
         lockedUsers++;
@@ -509,11 +509,32 @@ export class RateLimiter {
         activeUsers++;
       }
     }
-    
+
     return {
       totalUsers: this.users.size,
       lockedUsers,
       activeUsers
     };
+  }
+
+  /**
+   * 更新配置（热更新）
+   */
+  updateConfig(config: Partial<RateLimiterConfig>): void {
+    if (config.requestsPerMinute !== undefined) {
+      this.config.requestsPerMinute = config.requestsPerMinute;
+    }
+    if (config.windowMs !== undefined) {
+      this.config.windowMs = config.windowMs;
+      this.windowMs = config.windowMs;
+    }
+    if (config.permanentLock !== undefined) {
+      this.config.permanentLock = config.permanentLock;
+    }
+    logger.info('[RateLimiter] 配置已更新', {
+      requestsPerMinute: this.config.requestsPerMinute,
+      windowMs: this.windowMs,
+      permanentLock: this.config.permanentLock
+    });
   }
 }

@@ -139,3 +139,11 @@ export const logDebug = (message: string, meta?: object) => {
 export const logWarn = (message: string, meta?: object) => {
   logger.warn(message, meta);
 };
+
+/**
+ * 更新日志级别（热更新）
+ */
+export function updateLogLevel(level: string): void {
+  consoleLogger.level = level;
+  consoleLogger.info(`[Logger] 日志级别已更新为: ${level}`);
+}

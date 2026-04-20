@@ -203,22 +203,38 @@ curl -X POST "http://localhost:3456/rate-limit/reset?all=true" | jq .
 
 ## 配置热更新
 
-修改 `config.js` 中的以下配置项后，无需重启服务即可生效：
+修改 `config.js` 后，**所有配置项无需重启服务即可生效**：
 
-- `modelOverride` - OpenAI 协议模型替换
-- `anthropicModelOverride` - Anthropic 协议模型替换
-- `apiKeyOverride` - OpenAI 协议 API Key 替换
-- `anthropicApiKeyOverride` - Anthropic 协议 API Key 替换
+- `upstream` / `upstreamAppendV1` - OpenAI 上游地址
+- `anthropicUpstream` / `anthropicUpstreamAppendV1` - Anthropic 上游地址
+- `modelOverride` / `anthropicModelOverride` - 模型替换
+- `apiKeyOverride` / `anthropicApiKeyOverride` - API Key 替换
+- `loopGuard` - 循环保护（熔断阈值、时间窗口）
+- `rateLimit` - 限流配置（请求限制、锁定时间）
+- `contentFilter` - 内容过滤
+- `contextTruncation` - 上下文截断
+- `tokenEstimation` - Token 估算系数
+- `timeout` - 超时配置
+- `commands` - 命令系统
+- `cors` - CORS 白名单
+- `dashboard` - Dashboard 配置
+- `fullTrace` - 全链路追踪
+- `logLevel` - 日志级别
+
+**仍需重启的配置项**：
+- `port` / `host` - 端口和地址绑定
+- `https` - HTTPS 证书配置
+- `features` - 功能开关（stats、webDashboard）
+- `logDir` - 日志目录
 
 服务启动后会自动监听 `config.js` 文件变化，检测到变化后 1 秒内自动加载新配置。
 
 日志中会显示：
 ```
 [ConfigWatcher] config.js 文件已变化
-[ConfigWatcher] 配置已热更新 ["modelOverride", "apiKeyOverride"]
+[ConfigWatcher] 配置已热更新 ["rateLimit", "contentFilter"]
+[Proxy] 配置已热更新 ["rateLimit", "contentFilter"]
 ```
-
-**注意**：其他配置项（如 `upstream`、`port`、`rateLimit` 等）仍需重启服务才能生效。
 
 ## HTTPS 配置
 
