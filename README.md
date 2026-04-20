@@ -377,6 +377,11 @@ commands: {
 
 ## 版本历史
 
+### v0.6.3 (2026-04-20)
+
+- ✅ 日志页面分页功能：按需加载，基于 timestamp 锚点避免新日志插入导致页偏移
+- ✅ 配置文件全项热重载：upstream、loopGuard、rateLimit、contentFilter 等所有配置项修改后立即生效
+
 ### v0.6.2 (2026-04-16)
 
 - ✅ 协议从 MIT 迁移至 GPL-3.0-or-later
