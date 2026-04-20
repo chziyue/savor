@@ -430,11 +430,59 @@ export function renderLogsPage(): string {
       padding: 60px;
       color: rgba(255, 255, 255, 0.5);
     }
-    
+
     .empty-state-icon {
       font-size: 3rem;
       margin-bottom: 15px;
       opacity: 0.5;
+    }
+
+    /* 分页 */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 25px;
+      padding-top: 20px;
+      border-top: 1px solid var(--grid-color);
+    }
+
+    .pagination-btn {
+      min-width: 40px;
+      height: 40px;
+      padding: 0 12px;
+      background: rgba(0, 245, 255, 0.1);
+      border: 1px solid var(--neon-cyan);
+      border-radius: 4px;
+      color: var(--neon-cyan);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .pagination-btn:hover {
+      background: var(--neon-cyan);
+      color: #000;
+      box-shadow: 0 0 15px var(--neon-cyan);
+    }
+
+    .pagination-btn.active {
+      background: var(--neon-cyan);
+      color: #000;
+      font-weight: bold;
+    }
+
+    .pagination-btn.disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .pagination-info {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.85rem;
+      margin-left: 15px;
     }
   </style>
 </head>
@@ -464,78 +512,250 @@ export function renderLogsPage(): string {
   </div>
   
   <script>
-    // 存储日志 ID 映射
-    var logIds = [];
-    
+    // 分页配置
+    const PAGE_SIZE = 100;
+
+    // 存储已加载的页（key: 页码, value: 日志数组）
+    var loadedPages = {};
+    var currentPage = 1;
+    var totalCount = 0;
+    var lastAnchorTimestamp = null;  // 当前页最后一行的 timestamp，作为下一页的锚点
+
     async function loadLogs() {
       try {
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const res = await fetch('/api/logs/summary?limit=100');
-        const allRequests = await res.json();
-        const todayRequests = allRequests.filter(r => r.timestamp >= todayStart);
-        
         const container = document.getElementById('logContainer');
-        const countEl = document.getElementById('logCount');
-        
-        countEl.textContent = '共 ' + todayRequests.length + ' 条记录';
-        
-        if (todayRequests.length === 0) {
+        container.innerHTML = '<div class="loading">正在加载日志数据...</div>';
+
+        // 加载第一页（今日日志）
+        const res = await fetch('/api/logs/summary?limit=' + PAGE_SIZE + '&today=true');
+        const logs = await res.json();
+
+        if (logs.length === 0) {
           container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div>今日暂无日志记录</div></div>';
+          document.getElementById('logCount').textContent = '共 0 条记录';
           return;
         }
-        
-        logIds = todayRequests.map(r => r.id);
-        
-        container.innerHTML = todayRequests.map(function(r, index) {
-          const date = new Date(r.timestamp);
-          const timeStr = date.toLocaleString('zh-CN', {
-            month: '2-digit', day: '2-digit', hour: '2-digit',
-            minute: '2-digit', second: '2-digit', hour12: false
-          });
-          
-          const isError = r.status !== 'success';
-          var filterMarkersHtml = '';
-          if (r.filterMarkers && r.filterMarkers.length > 0) {
-            filterMarkersHtml = '<div class="filter-markers-container">' +
-              r.filterMarkers.map(function(marker) {
-                var text = marker.trim();
-                return '<span class="log-filter-marker">' + text.toUpperCase() + '</span>';
-              }).join('') + '</div>';
-          }
-          
-          return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + index + '" data-id="' + r.id + '">' +
-            '<div class="log-summary" onclick="toggleLog(event, ' + index + ')">' +
-            '<span class="log-time">' + timeStr + '</span>' +
-            '<span class="log-status ' + r.status + '">' + r.status.toUpperCase() + '</span>' +
-            '<span class="log-model">' + r.model + '</span>' +
-            filterMarkersHtml +
-            '<span class="log-tokens">Tokens: ' + r.promptTokens + ' + ' + r.completionTokens + ' = ' + r.totalTokens + '</span>' +
-            '<span class="log-duration">⏱️ ' + r.duration + 'ms</span>' +
-            '<span class="expand-icon">▼</span>' +
-            '</div>' +
-            '<div class="log-details" id="log-details-' + index + '">' +
-            '<div class="detail-row"><span class="detail-label">时间戳:</span><span class="detail-value">' + date.toISOString() + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + r.model + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + r.status + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">Prompt Tokens:</span><span class="detail-value">' + r.promptTokens + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">Completion Tokens:</span><span class="detail-value">' + r.completionTokens + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">Total Tokens:</span><span class="detail-value">' + r.totalTokens + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">耗时:</span><span class="detail-value">' + r.duration + 'ms</span></div>' +
-            (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + r.errorMessage + '</span></div>' : '') +
-            '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">请求体 (Request):</span></div>' +
-            '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, ' + "'" + 'req-' + index + "'" + ')">复制</button>' +
-            '<div class="code-block"><pre id="req-' + index + '" class="request-body"></pre></div></div>' +
-            '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">响应体 (Response):</span></div>' +
-            '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, ' + "'" + 'resp-' + index + "'" + ')">复制</button>' +
-            '<div class="code-block"><pre id="resp-' + index + '" class="response-body"></pre></div></div>' +
-            '</div></div>';
-        }).join('');
+
+        totalCount = logs.length;
+        loadedPages[1] = logs;
+        lastAnchorTimestamp = logs[logs.length - 1].timestamp;
+        currentPage = 1;
+
+        const countEl = document.getElementById('logCount');
+        const estimatedTotal = totalCount >= PAGE_SIZE ? '更多' : totalCount.toString();
+        countEl.textContent = '共 ' + estimatedTotal + ' 条记录';
+
+        container.innerHTML = '<div id="logList"></div><div class="pagination" id="pagination"></div>';
+        renderLogs();
+        renderPagination();
+
+        // 如果第一页满了，说明还有更多，自动加载第二页来获取总数估算
+        if (logs.length >= PAGE_SIZE) {
+          loadNextPageForCount();
+        }
       } catch (e) {
         document.getElementById('logContainer').innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div>加载日志失败: ' + e.message + '</div></div>';
       }
     }
-    
+
+    // 加载第二页来估算总数（通过比较 timestamp 判断是否还有更多）
+    async function loadNextPageForCount() {
+      try {
+        const res = await fetch('/api/logs/summary?limit=' + PAGE_SIZE + '&today=true&before=' + lastAnchorTimestamp);
+        const nextLogs = await res.json();
+
+        if (nextLogs.length === 0) {
+          // 第二页为空，说明第一页的数据就是最新的，总数就是第一页的数量
+          const countEl = document.getElementById('logCount');
+          countEl.textContent = '共 ' + totalCount + ' 条记录 (1 页)';
+          return;
+        }
+
+        // 假设总共有 2 页，然后按需加载更多
+        totalCount = PAGE_SIZE + nextLogs.length;
+        const countEl = document.getElementById('logCount');
+        countEl.textContent = '共 ' + totalCount + ' 条记录 (2 页)';
+        renderPagination();
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    async function goToPage(page) {
+      if (page < 1) return;
+
+      // 如果这一页已经加载过，直接渲染
+      if (loadedPages[page]) {
+        currentPage = page;
+        renderLogs();
+        renderPagination();
+        return;
+      }
+
+      // 需要从服务器加载
+      const container = document.getElementById('logContainer');
+      container.innerHTML = '<div class="loading">正在加载第 ' + page + ' 页...</div>';
+
+      try {
+        // 找到上一页最后一行的 timestamp 作为锚点
+        var anchorTimestamp = null;
+        if (page > 1 && loadedPages[page - 1]) {
+          var prevPageLogs = loadedPages[page - 1];
+          anchorTimestamp = prevPageLogs[prevPageLogs.length - 1].timestamp;
+        }
+
+        var url = '/api/logs/summary?limit=' + PAGE_SIZE + '&today=true';
+        if (anchorTimestamp) {
+          url += '&before=' + anchorTimestamp;
+        }
+
+        const res = await fetch(url);
+        const logs = await res.json();
+
+        if (logs.length === 0) {
+          // 没有更多数据了
+          const countEl = document.getElementById('logCount');
+          countEl.textContent = '共 ' + Object.keys(loadedPages).reduce(function(sum, p) { return sum + loadedPages[p].length; }, 0) + ' 条记录';
+          container.innerHTML = '<div id="logList"></div><div class="pagination" id="pagination"></div>';
+          renderPagination();
+          return;
+        }
+
+        loadedPages[page] = logs;
+        lastAnchorTimestamp = logs[logs.length - 1].timestamp;
+        currentPage = page;
+
+        // 更新总数
+        var totalLogs = Object.keys(loadedPages).reduce(function(sum, p) { return sum + loadedPages[p].length; }, 0);
+        var estimatedPages = Object.keys(loadedPages).length;
+        if (logs.length >= PAGE_SIZE) {
+          estimatedPages = '更多';
+        }
+        const countEl = document.getElementById('logCount');
+        countEl.textContent = '共 ' + (logs.length >= PAGE_SIZE ? totalLogs + '+' : totalLogs) + ' 条记录';
+
+        container.innerHTML = '<div id="logList"></div><div class="pagination" id="pagination"></div>';
+        renderLogs();
+        renderPagination();
+
+        // 如果还有更多，自动加载下一页估算
+        if (logs.length >= PAGE_SIZE && page <= 2) {
+          loadNextPageForCount();
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div>加载失败: ' + e.message + '</div></div>';
+      }
+    }
+
+    function renderLogs() {
+      const listContainer = document.getElementById('logList');
+      if (!listContainer) return;
+
+      var logs = loadedPages[currentPage] || [];
+      if (logs.length === 0) {
+        listContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div>该页暂无日志</div></div>';
+        return;
+      }
+
+      listContainer.innerHTML = logs.map(function(r, idx) {
+        var globalIndex = (currentPage - 1) * PAGE_SIZE + idx;
+        var date = new Date(r.timestamp);
+        var timeStr = date.toLocaleString('zh-CN', {
+          month: '2-digit', day: '2-digit', hour: '2-digit',
+          minute: '2-digit', second: '2-digit', hour12: false
+        });
+
+        var isError = r.status !== 'success';
+        var filterMarkersHtml = '';
+        if (r.filterMarkers && r.filterMarkers.length > 0) {
+          filterMarkersHtml = '<div class="filter-markers-container">' +
+            r.filterMarkers.map(function(marker) {
+              var text = marker.trim();
+              return '<span class="log-filter-marker">' + text.toUpperCase() + '</span>';
+            }).join('') + '</div>';
+        }
+
+        return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + globalIndex + '" data-id="' + r.id + '">' +
+          '<div class="log-summary" onclick="toggleLog(event, ' + globalIndex + ')">' +
+          '<span class="log-time">' + timeStr + '</span>' +
+          '<span class="log-status ' + r.status + '">' + r.status.toUpperCase() + '</span>' +
+          '<span class="log-model">' + r.model + '</span>' +
+          filterMarkersHtml +
+          '<span class="log-tokens">Tokens: ' + r.promptTokens + ' + ' + r.completionTokens + ' = ' + r.totalTokens + '</span>' +
+          '<span class="log-duration">⏱️ ' + r.duration + 'ms</span>' +
+          '<span class="expand-icon">▼</span>' +
+          '</div>' +
+          '<div class="log-details" id="log-details-' + globalIndex + '">' +
+          '<div class="detail-row"><span class="detail-label">时间戳:</span><span class="detail-value">' + date.toISOString() + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + r.model + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + r.status + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">Prompt Tokens:</span><span class="detail-value">' + r.promptTokens + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">Completion Tokens:</span><span class="detail-value">' + r.completionTokens + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">Total Tokens:</span><span class="detail-value">' + r.totalTokens + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">耗时:</span><span class="detail-value">' + r.duration + 'ms</span></div>' +
+          (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + r.errorMessage + '</span></div>' : '') +
+          '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">请求体 (Request):</span></div>' +
+          '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, ' + "'" + 'req-' + globalIndex + "'" + ')">复制</button>' +
+          '<div class="code-block"><pre id="req-' + globalIndex + '" class="request-body"></pre></div></div>' +
+          '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">响应体 (Response):</span></div>' +
+          '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, ' + "'" + 'resp-' + globalIndex + "'" + ')">复制</button>' +
+          '<div class="code-block"><pre id="resp-' + globalIndex + '" class="response-body"></pre></div></div>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    function renderPagination() {
+      var pagination = document.getElementById('pagination');
+      if (!pagination) return;
+
+      // 估算总页数（至少当前加载的这么多）
+      var totalLogs = Object.keys(loadedPages).reduce(function(sum, p) { return sum + loadedPages[p].length; }, 0);
+      var currentPageCount = loadedPages[currentPage] ? loadedPages[currentPage].length : 0;
+
+      // 如果当前页是满的，说明可能有更多页
+      var hasMore = currentPageCount >= PAGE_SIZE;
+      var estimatedTotalPages = Math.ceil(totalLogs / PAGE_SIZE);
+      var displayTotalPages = hasMore ? estimatedTotalPages + '+' : estimatedTotalPages;
+
+      var start = (currentPage - 1) * PAGE_SIZE + 1;
+      var end = start + currentPageCount - 1;
+
+      var html = '';
+
+      // 上一页
+      html += '<button class="pagination-btn ' + (currentPage === 1 ? 'disabled' : '') + '" onclick="goToPage(' + (currentPage - 1) + ')" ' + (currentPage === 1 ? 'disabled' : '') + '>‹</button>';
+
+      // 页码（最多显示 5 个）
+      var pagesToShow = [];
+      if (estimatedTotalPages <= 5) {
+        for (var i = 1; i <= estimatedTotalPages; i++) pagesToShow.push(i);
+      } else {
+        if (currentPage <= 3) {
+          pagesToShow = [1, 2, 3, 4, '...', estimatedTotalPages];
+        } else if (currentPage >= estimatedTotalPages - 2) {
+          pagesToShow = [1, '...', estimatedTotalPages - 3, estimatedTotalPages - 2, estimatedTotalPages - 1, estimatedTotalPages];
+        } else {
+          pagesToShow = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', estimatedTotalPages];
+        }
+      }
+
+      for (var i = 0; i < pagesToShow.length; i++) {
+        var p = pagesToShow[i];
+        if (p === '...') {
+          html += '<span class="pagination-btn disabled" style="cursor:default;">...</span>';
+        } else {
+          html += '<button class="pagination-btn ' + (p === currentPage ? 'active' : '') + '" onclick="goToPage(' + p + ')">' + p + '</button>';
+        }
+      }
+
+      // 下一页
+      html += '<button class="pagination-btn ' + (!hasMore ? 'disabled' : '') + '" onclick="goToPage(' + (currentPage + 1) + ')" ' + (!hasMore ? 'disabled' : '') + '>›</button>';
+
+      html += '<span class="pagination-info">第 ' + start + '-' + end + ' 条</span>';
+
+      pagination.innerHTML = html;
+    }
+
     function escapeHtml(text) {
       if (!text) return '';
       const div = document.createElement('div');
@@ -609,9 +829,11 @@ export function renderLogsPage(): string {
     }
     
     loadLogs();
-    
+
     function refreshLogs() {
       document.getElementById('logContainer').innerHTML = '<div class="loading">刷新中...</div>';
+      loadedPages = {};
+      totalCount = 0;
       loadLogs();
     }
   </script>

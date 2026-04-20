@@ -548,19 +548,44 @@ export class StatsDatabase {
   /**
    * 获取最近 N 条请求摘要（不包含 requestBody/responseBody）
    */
-  getRecentLogsSummary(limit: number = 100): LogSummaryRow[] {
-    const stmt = this.db.prepare(`
+    getRecentLogsSummary(limit: number = 100, before?: number, today?: boolean): LogSummaryRow[] {
+    // 计算今日开始时间戳
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    let sql = `
       SELECT
         id, timestamp, model, prompt_tokens as promptTokens,
         completion_tokens as completionTokens, total_tokens as totalTokens,
         duration, status, error_message as errorMessage,
         filter_markers as filterMarkers
       FROM requests
-      ORDER BY timestamp DESC
-      LIMIT ?
-    `);
+    `;
 
-    const rows = stmt.all(limit) as LogSummaryRow[];
+    // 构建 WHERE 条件
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (today) {
+      conditions.push('timestamp >= ?');
+      params.push(todayStart);
+    }
+
+    if (before !== undefined) {
+      conditions.push('timestamp < ?');
+      params.push(before);
+    }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    sql += ' ORDER BY timestamp DESC LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...params) as LogSummaryRow[];
+
     return rows.map(row => ({
       ...row,
       filterMarkers: row.filterMarkers ? JSON.parse(row.filterMarkers) : undefined
