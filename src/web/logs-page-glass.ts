@@ -611,6 +611,35 @@ export function renderLogsPageGlass(): string {
       margin-bottom: 15px;
       opacity: 0.5;
     }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 20px 0 0;
+    }
+
+    .pagination-btn {
+      min-width: 40px;
+      height: 40px;
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      border-radius: 12px;
+      color: var(--btn-text);
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .pagination-btn:hover:not(.active) {
+      background: var(--btn-hover-bg);
+      color: var(--btn-hover-text);
+    }
+
+    .pagination-btn.active {
+      background: var(--accent-primary-bg);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
   </style>
 </head>
 <body>
@@ -685,6 +714,7 @@ export function renderLogsPageGlass(): string {
             </div></div>`;
         }).join('')}
       </div>
+      ${todayLogs.length >= 100 ? '<div class="pagination" id="pagination"><button class="pagination-btn active" onclick="goToPage(1)">1</button><button class="pagination-btn" onclick="goToPage(2)">2</button><button class="pagination-btn" onclick="goToPage(3)">3</button><button class="pagination-btn" onclick="goToPage(4)">4</button><button class="pagination-btn" onclick="goToPage(5)">5</button></div>' : ''}
     </div>
   </div>
   
@@ -849,6 +879,82 @@ export function renderLogsPageGlass(): string {
         btn.innerHTML = '❌ 失败';
         setTimeout(function() { btn.innerHTML = originalText; }, 2000);
       }
+    }
+
+    // 分页锚点（第一页最后一条的 timestamp）
+    var pageAnchors = {};
+    ${todayLogs.length >= 100 ? `pageAnchors[1] = ${todayLogs[todayLogs.length - 1].timestamp};` : ''}
+
+    async function goToPage(page) {
+      // 更新分页按钮状态
+      var btns = document.querySelectorAll('.pagination-btn');
+      btns.forEach(function(btn, i) { btn.classList.toggle('active', i + 1 === page); });
+
+      var container = document.getElementById('logContainer');
+      container.innerHTML = '<div class="loading">加载中...</div>';
+
+      // 计算锚点：第N页需要第N-1页的最后一条 timestamp
+      var anchor = page > 1 ? pageAnchors[page - 1] : null;
+
+      var url = '/api/logs/summary?limit=100&today=true';
+      if (anchor) url += '&before=' + anchor;
+
+      try {
+        var res = await fetch(url);
+        var logs = await res.json();
+
+        // 保存当前页锚点
+        if (logs.length > 0) pageAnchors[page] = logs[logs.length - 1].timestamp;
+
+        renderLogs(logs, page);
+        document.getElementById('logCount').textContent = '第 ' + page + ' 页，' + logs.length + ' 条记录';
+      } catch (e) {
+        container.innerHTML = '<div class="empty-state">加载失败</div>';
+      }
+    }
+
+    function renderLogs(logs, page) {
+      var container = document.getElementById('logContainer');
+      if (logs.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div>该页无日志</div></div>';
+        return;
+      }
+
+      container.innerHTML = logs.map(function(r, idx) {
+        var globalIndex = (page - 1) * 100 + idx;
+        var date = new Date(r.timestamp);
+        var timeStr = date.toLocaleString('zh-CN', {month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
+        var isError = r.status !== 'success';
+        var filterMarkersHtml = '';
+        if (r.filterMarkers && r.filterMarkers.length > 0) {
+          filterMarkersHtml = '<div class="filter-markers-container">' + r.filterMarkers.map(function(m) { return '<span class="log-filter-marker">' + m.trim().toUpperCase() + '</span>'; }).join('') + '</div>';
+        }
+        return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + globalIndex + '" data-id="' + r.id + '">' +
+          '<div class="log-summary" onclick="toggleLog(event, ' + globalIndex + ')">' +
+          '<span class="log-time">' + timeStr + '</span>' +
+          '<span class="log-status ' + r.status + '">' + r.status.toUpperCase() + '</span>' +
+          '<span class="log-model">' + r.model + '</span>' +
+          filterMarkersHtml +
+          '<span class="log-tokens">Tokens: ' + r.promptTokens + ' + ' + r.completionTokens + ' = ' + r.totalTokens + '</span>' +
+          '<span class="log-duration">⏱️ ' + r.duration + 'ms</span>' +
+          '<span class="expand-icon">▼</span></div>' +
+          '<div class="log-details" id="log-details-' + globalIndex + '">' +
+          '<div class="detail-row"><span class="detail-label">时间戳:</span><span class="detail-value">' + date.toISOString() + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + r.model + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + r.status + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">Prompt Tokens:</span><span class="detail-value">' + r.promptTokens + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">Completion Tokens:</span><span class="detail-value">' + r.completionTokens + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">Total Tokens:</span><span class="detail-value">' + r.totalTokens + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">耗时:</span><span class="detail-value">' + r.duration + 'ms</span></div>' +
+          (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + r.errorMessage + '</span></div>' : '') +
+          '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">请求体 (Request):</span></div>' +
+          '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, &#39;req-' + globalIndex + '&#39;)">复制</button>' +
+          '<div class="code-block"><pre id="req-' + globalIndex + '" class="request-body"></pre></div></div>' +
+          '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">响应体 (Response):</span></div>' +
+          '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, &#39;resp-' + globalIndex + '&#39;)">复制</button>' +
+          '<div class="code-block"><pre id="resp-' + globalIndex + '" class="response-body"></pre></div></div>' +
+          '</div></div>';
+      }).join('');
     }
   </script>
 </body>
