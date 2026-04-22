@@ -593,6 +593,17 @@ export class StatsDatabase {
   }
 
   /**
+   * 获取今日日志总数
+   */
+  getTodayLogsCount(): number {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM requests WHERE timestamp >= ?');
+    const result = stmt.get(todayStart) as { count: number };
+    return result.count;
+  }
+
+  /**
    * 执行单行查询（通用方法）
    * @param sql SQL 语句
    * @param params 参数

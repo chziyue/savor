@@ -18,14 +18,23 @@
  * 毛玻璃风格日志页面
  */
 
-import { getRecentLogsSummary } from '../utils/stats.js';
+import { getRecentLogsSummary, getTodayLogsCount } from '../utils/stats.js';
 
 export function renderLogsPageGlass(): string {
-  // 服务器端预先获取日志数据
-  const allLogs = getRecentLogsSummary(100);
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const todayLogs = allLogs.filter(r => r.timestamp >= todayStart);
+  // 服务器端预先获取今日日志数据（直接传 today 参数）
+  const todayLogs = getRecentLogsSummary(100, undefined, true);
+
+  // 获取今日日志总数，计算按钮数量
+  const totalCount = getTodayLogsCount();
+  const totalPages = Math.ceil(totalCount / 100);
+  const showPagination = totalCount > 100;
+  const paginationButtons = showPagination
+    ? '<button class="pagination-btn" id="prevBtn" style="display:none" onclick="goToPage(currentPage - 1)">‹</button>' +
+      Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1)
+        .map(p => `<button class="pagination-btn${p === 1 ? ' active' : ''}" onclick="goToPage(${p})">${p}</button>`)
+        .join('') +
+      (totalPages > 10 ? '<button class="pagination-btn" onclick="goToPage(currentPage + 1)">›</button>' : '')
+    : '';
   
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -714,7 +723,7 @@ export function renderLogsPageGlass(): string {
             </div></div>`;
         }).join('')}
       </div>
-      ${todayLogs.length >= 100 ? '<div class="pagination" id="pagination"><button class="pagination-btn active" onclick="goToPage(1)">1</button><button class="pagination-btn" onclick="goToPage(2)">2</button><button class="pagination-btn" onclick="goToPage(3)">3</button><button class="pagination-btn" onclick="goToPage(4)">4</button><button class="pagination-btn" onclick="goToPage(5)">5</button></div>' : ''}
+      ${showPagination ? `<div class="pagination" id="pagination">${paginationButtons}</div>` : ''}
     </div>
   </div>
   
@@ -881,31 +890,37 @@ export function renderLogsPageGlass(): string {
       }
     }
 
-    // 分页锚点（第一页最后一条的 timestamp）
+    // 分页锚点（用于翻页）
     var pageAnchors = {};
+    var currentPage = 1;
+    var totalPages = ${totalPages};
     ${todayLogs.length >= 100 ? `pageAnchors[1] = ${todayLogs[todayLogs.length - 1].timestamp};` : ''}
 
     async function goToPage(page) {
-      // 更新分页按钮状态
+      currentPage = page;
+
+      // 更新按钮状态
       var btns = document.querySelectorAll('.pagination-btn');
-      btns.forEach(function(btn, i) { btn.classList.toggle('active', i + 1 === page); });
+      btns.forEach(function(btn) {
+        var btnPage = btn.textContent;
+        btn.classList.toggle('active', btnPage === String(page));
+      });
+
+      // 显示/隐藏左箭头
+      var prevBtn = document.getElementById('prevBtn');
+      if (prevBtn) prevBtn.style.display = page > 1 ? 'inline-flex' : 'none';
 
       var container = document.getElementById('logContainer');
       container.innerHTML = '<div class="loading">加载中...</div>';
 
-      // 计算锚点：第N页需要第N-1页的最后一条 timestamp
       var anchor = page > 1 ? pageAnchors[page - 1] : null;
-
       var url = '/api/logs/summary?limit=100&today=true';
       if (anchor) url += '&before=' + anchor;
 
       try {
         var res = await fetch(url);
         var logs = await res.json();
-
-        // 保存当前页锚点
         if (logs.length > 0) pageAnchors[page] = logs[logs.length - 1].timestamp;
-
         renderLogs(logs, page);
         document.getElementById('logCount').textContent = '第 ' + page + ' 页，' + logs.length + ' 条记录';
       } catch (e) {

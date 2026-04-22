@@ -272,6 +272,13 @@ export function getRecentLogsSummary(n: number = 100, before?: number, today?: b
 }
 
 /**
+ * 获取今日日志总数
+ */
+export function getTodayLogsCount(): number {
+  return db?.getTodayLogsCount() || 0;
+}
+
+/**
  * 获取单条日志详情
  */
 export function getLogDetail(id: string): LogDetailRow | null {
