@@ -89,9 +89,9 @@ export function createWebServer(): express.Router {
   // API: 日志摘要（不包含详情）
   router.get('/api/logs/summary', (req, res) => {
     const limit = parseInt(req.query.limit as string) || 100;
-    const before = req.query.before ? parseInt(req.query.before as string) : undefined;
+    const offset = parseInt(req.query.offset as string) || 0;
     const today = req.query.today === 'true';
-    res.json(getRecentLogsSummary(limit, before, today));
+    res.json(getRecentLogsSummary(limit, offset, today));
   });
   
   // API: 单条日志详情

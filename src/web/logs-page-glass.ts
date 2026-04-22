@@ -29,7 +29,7 @@ export function renderLogsPageGlass(): string {
   const totalPages = Math.ceil(totalCount / 100);
   const showPagination = totalCount > 100;
   const paginationButtons = showPagination
-    ? Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1)
+    ? Array.from({ length: Math.min(totalPages, 20) }, (_, i) => i + 1)
         .map(p => `<button class="pagination-btn${p === 1 ? ' active' : ''}" onclick="goToPage(${p})">${p}</button>`)
         .join('')
     : '';
@@ -888,11 +888,9 @@ export function renderLogsPageGlass(): string {
       }
     }
 
-    // 分页锚点（用于翻页）
-    var pageAnchors = {};
+    // 分页
     var currentPage = 1;
     var totalPages = ${totalPages};
-    ${todayLogs.length >= 100 ? `pageAnchors[1] = ${todayLogs[todayLogs.length - 1].timestamp};` : ''}
 
     async function goToPage(page) {
       currentPage = page;
@@ -907,14 +905,12 @@ export function renderLogsPageGlass(): string {
       var container = document.getElementById('logContainer');
       container.innerHTML = '<div class="loading">加载中...</div>';
 
-      var anchor = page > 1 ? pageAnchors[page - 1] : null;
-      var url = '/api/logs/summary?limit=100&today=true';
-      if (anchor) url += '&before=' + anchor;
+      var offset = (page - 1) * 100;
+      var url = '/api/logs/summary?limit=100&offset=' + offset + '&today=true';
 
       try {
         var res = await fetch(url);
         var logs = await res.json();
-        if (logs.length > 0) pageAnchors[page] = logs[logs.length - 1].timestamp;
         renderLogs(logs, page);
         document.getElementById('logCount').textContent = '第 ' + page + ' 页，' + logs.length + ' 条记录';
       } catch (e) {

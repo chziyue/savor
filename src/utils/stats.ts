@@ -267,8 +267,8 @@ interface LogDetailRow {
   responseBody?: string;
 }
 
-export function getRecentLogsSummary(n: number = 100, before?: number, today?: boolean): LogSummaryRow[] {
-  return db?.getRecentLogsSummary(n, before, today) || [];
+export function getRecentLogsSummary(n: number = 100, offset?: number, today?: boolean): LogSummaryRow[] {
+  return db?.getRecentLogsSummary(n, offset, today) || [];
 }
 
 /**

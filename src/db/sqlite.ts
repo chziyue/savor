@@ -548,7 +548,7 @@ export class StatsDatabase {
   /**
    * 获取最近 N 条请求摘要（不包含 requestBody/responseBody）
    */
-    getRecentLogsSummary(limit: number = 100, before?: number, today?: boolean): LogSummaryRow[] {
+    getRecentLogsSummary(limit: number = 100, offset?: number, today?: boolean): LogSummaryRow[] {
     // 计算今日开始时间戳
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -562,26 +562,16 @@ export class StatsDatabase {
       FROM requests
     `;
 
-    // 构建 WHERE 条件
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-
     if (today) {
-      conditions.push('timestamp >= ?');
-      params.push(todayStart);
+      sql += ' WHERE timestamp >= ?';
     }
 
-    if (before !== undefined) {
-      conditions.push('timestamp < ?');
-      params.push(before);
-    }
+    sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
 
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
-    }
-
-    sql += ' ORDER BY timestamp DESC LIMIT ?';
+    const params: unknown[] = [];
+    if (today) params.push(todayStart);
     params.push(limit);
+    params.push(offset || 0);
 
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as LogSummaryRow[];
