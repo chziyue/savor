@@ -29,11 +29,9 @@ export function renderLogsPageGlass(): string {
   const totalPages = Math.ceil(totalCount / 100);
   const showPagination = totalCount > 100;
   const paginationButtons = showPagination
-    ? '<button class="pagination-btn" id="prevBtn" style="display:none" onclick="goToPage(currentPage - 1)">‹</button>' +
-      Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1)
+    ? Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1)
         .map(p => `<button class="pagination-btn${p === 1 ? ' active' : ''}" onclick="goToPage(${p})">${p}</button>`)
-        .join('') +
-      (totalPages > 10 ? '<button class="pagination-btn" onclick="goToPage(currentPage + 1)">›</button>' : '')
+        .join('')
     : '';
   
   return `<!DOCTYPE html>
@@ -905,10 +903,6 @@ export function renderLogsPageGlass(): string {
         var btnPage = btn.textContent;
         btn.classList.toggle('active', btnPage === String(page));
       });
-
-      // 显示/隐藏左箭头
-      var prevBtn = document.getElementById('prevBtn');
-      if (prevBtn) prevBtn.style.display = page > 1 ? 'inline-flex' : 'none';
 
       var container = document.getElementById('logContainer');
       container.innerHTML = '<div class="loading">加载中...</div>';
