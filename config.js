@@ -7,15 +7,14 @@ module.exports = {
   // ==================== Common Configuration / 常用配置 ====================
 
   // Upstream LLM API URL / 上游大模型 API 地址
-  // Example: 'https://api.example.com/v1' / 示例
-  upstream: 'https://api.example.com/v1',
-  upstreamAppendV1: false,  // true = 自动追加 /v1，false = 不追加
+  // Example: 'https://api.example.com' / 示例
+  upstream: 'https://api.example.com',
+  upstreamSuffix: '/v1/chat/completions',  // 自定义后缀，默认 /v1/chat/completions
 
   // Anthropic API URL / Anthropic API 地址
   // For Anthropic protocol requests / 用于 Anthropic 协议请求
-  // 阿里云百炼官方格式不带 /v1，如：https://coding.dashscope.aliyuncs.com/apps/anthropic
-  anthropicUpstream: 'https://api.example.com',
-  anthropicUpstreamAppendV1: false,  // true = 自动追加 /v1，false = 不追加
+  anthropicUpstream: 'https://api.anthropic.com',
+  anthropicUpstreamSuffix: '/v1/messages',  // 自定义后缀，默认 /v1/messages
 
   // Server port / 服务监听端口
   port: 3456,

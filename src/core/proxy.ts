@@ -297,11 +297,8 @@ export class ProxyServer {
       }
 
       // 构建转发请求
-      let upstreamUrl = this.config.upstream;
-      if (this.config.upstreamAppendV1 && !upstreamUrl.endsWith('/v1')) {
-        upstreamUrl = upstreamUrl.replace(/\/?$/, '/v1');
-      }
-      const targetUrl = `${upstreamUrl}/chat/completions`;
+      const suffix = this.config.upstreamSuffix || '/v1/chat/completions';
+      const targetUrl = `${this.config.upstream}${suffix}`;
       
       logger.debug(`[${requestId}] 转发到: ${targetUrl}`);
 
@@ -947,11 +944,9 @@ export class ProxyServer {
       }
 
       // 构建转发请求
-      let upstreamUrl = this.config.anthropicUpstream || 'https://api.anthropic.com';
-      if (this.config.anthropicUpstreamAppendV1 && !upstreamUrl.endsWith('/v1')) {
-        upstreamUrl = upstreamUrl.replace(/\/?$/, '/v1');
-      }
-      const targetUrl = `${upstreamUrl}/messages`;
+      const upstreamUrl = this.config.anthropicUpstream || 'https://api.anthropic.com';
+      const suffix = this.config.anthropicUpstreamSuffix || '/v1/messages';
+      const targetUrl = `${upstreamUrl}${suffix}`;
 
       logger.debug(`[${requestId}] Anthropic 转发到: ${targetUrl}`);
 

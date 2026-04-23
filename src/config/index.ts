@@ -26,12 +26,11 @@ import path from 'path';
 
 const defaultConfig = {
   // Common configuration
-  upstream: 'https://api.example.com/v1',
-  upstreamAppendV1: true,           // OpenAI upstream 是否自动追加 /v1
+  upstream: 'https://api.example.com',
+  upstreamSuffix: '/v1/chat/completions',  // OpenAI 协议后缀
   // Anthropic upstream / Anthropic 上游地址
-  // 阿里云百炼官方格式：https://coding.dashscope.aliyuncs.com/apps/anthropic（不带 /v1）
   anthropicUpstream: 'https://api.anthropic.com',
-  anthropicUpstreamAppendV1: true,  // Anthropic upstream 是否自动追加 /v1
+  anthropicUpstreamSuffix: '/v1/messages',  // Anthropic 协议后缀
   port: 3456,
   host: '0.0.0.0',
   modelOverride: {
@@ -117,9 +116,9 @@ export interface CommandsConfig {
 
 export interface SavorConfig {
   upstream: string;
-  upstreamAppendV1: boolean;
+  upstreamSuffix?: string;  // 自定义后缀，默认 /v1/chat/completions
   anthropicUpstream?: string;
-  anthropicUpstreamAppendV1: boolean;
+  anthropicUpstreamSuffix?: string;  // 自定义后缀，默认 /v1/messages
   port: number;
   host: string;
   logLevel: string;
@@ -296,20 +295,20 @@ function reloadHotConfig(onUpdate?: (updatedKeys: string[], newConfig: Partial<S
       newConfig.upstream = newUserConfig.upstream;
       updatedKeys.push('upstream');
     }
-    if (newUserConfig.upstreamAppendV1 !== undefined) {
-      Config.upstreamAppendV1 = newUserConfig.upstreamAppendV1;
-      newConfig.upstreamAppendV1 = newUserConfig.upstreamAppendV1;
-      updatedKeys.push('upstreamAppendV1');
+    if (newUserConfig.upstreamSuffix !== undefined) {
+      Config.upstreamSuffix = newUserConfig.upstreamSuffix;
+      newConfig.upstreamSuffix = newUserConfig.upstreamSuffix;
+      updatedKeys.push('upstreamSuffix');
     }
     if (newUserConfig.anthropicUpstream !== undefined) {
       Config.anthropicUpstream = newUserConfig.anthropicUpstream;
       newConfig.anthropicUpstream = newUserConfig.anthropicUpstream;
       updatedKeys.push('anthropicUpstream');
     }
-    if (newUserConfig.anthropicUpstreamAppendV1 !== undefined) {
-      Config.anthropicUpstreamAppendV1 = newUserConfig.anthropicUpstreamAppendV1;
-      newConfig.anthropicUpstreamAppendV1 = newUserConfig.anthropicUpstreamAppendV1;
-      updatedKeys.push('anthropicUpstreamAppendV1');
+    if (newUserConfig.anthropicUpstreamSuffix !== undefined) {
+      Config.anthropicUpstreamSuffix = newUserConfig.anthropicUpstreamSuffix;
+      newConfig.anthropicUpstreamSuffix = newUserConfig.anthropicUpstreamSuffix;
+      updatedKeys.push('anthropicUpstreamSuffix');
     }
 
     // ==================== 模型/API Key 替换配置 ====================

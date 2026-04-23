@@ -1,6 +1,6 @@
 {
   "name": "savor",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "兼容 OpenAI 和 Anthropic 协议的 LLM 代理网关 - 省钱、省 Token、实时监控",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
