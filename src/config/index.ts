@@ -249,8 +249,11 @@ export function startConfigWatcher(onUpdate?: (updatedKeys: string[], newConfig:
   };
 
   watcher = fs.watch(configPath, (eventType) => {
-    if (eventType === 'change') {
-      logger.info('[ConfigWatcher] config.js 文件已变化');
+    // 同时监听 'change' 和 'rename' 事件
+    // - 'change': 直接写入（某些编辑器）
+    // - 'rename': 原子写入（vim、VS Code 等编辑器先写临时文件再重命名）
+    if (eventType === 'change' || eventType === 'rename') {
+      logger.info('[ConfigWatcher] config.js 文件已变化', { eventType });
       handleChange();
     }
   });
