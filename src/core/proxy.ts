@@ -469,6 +469,7 @@ export class ProxyServer {
         chunks.push(chunk);
         
         // 解析 SSE 数据尝试提取 token 信息
+        // OpenAI 协议格式
         const match = chunk.match(/"total_tokens":(\d+)/);
         if (match) {
           totalTokens = parseInt(match[1]);
@@ -480,6 +481,15 @@ export class ProxyServer {
         const matchCompletion = chunk.match(/"completion_tokens":(\d+)/);
         if (matchCompletion) {
           completionTokens = parseInt(matchCompletion[1]);
+        }
+        // Anthropic 协议格式
+        const matchInput = chunk.match(/"input_tokens":(\d+)/);
+        if (matchInput) {
+          promptTokens = parseInt(matchInput[1]);
+        }
+        const matchOutput = chunk.match(/"output_tokens":(\d+)/);
+        if (matchOutput) {
+          completionTokens = parseInt(matchOutput[1]);
         }
         
         res.write(value);
