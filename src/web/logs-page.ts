@@ -681,7 +681,7 @@ export function renderLogsPage(): string {
           '<span class="log-status ' + r.status + '">' + r.status.toUpperCase() + '</span>' +
           '<span class="log-model">' + r.model + '</span>' +
           filterMarkersHtml +
-          '<span class="log-tokens">Tokens: ' + r.promptTokens + ' + ' + r.completionTokens + ' = ' + r.totalTokens + '</span>' +
+          '<span class="log-tokens">Tokens: ' + r.totalTokens + ' = ' + r.promptTokens + ' + ' + r.completionTokens + '</span>' +
           '<span class="log-duration">⏱️ ' + r.duration + 'ms</span>' +
           '<span class="expand-icon">▼</span>' +
           '</div>' +

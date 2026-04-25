@@ -679,7 +679,7 @@ export function renderCyberDashboard(): string {
             <span class="log-status \${r.status}">[\${r.status.toUpperCase()}]</span>
             <span style="color: #00f5ff;">\${r.model}</span>
             \${filterMarkersHtml}
-            <span style="color: rgba(255,255,255,0.6);">Tokens: \${r.promptTokens} + \${r.completionTokens} = \${r.totalTokens}</span>
+            <span style="color: rgba(255,255,255,0.6);">Tokens: \${r.totalTokens} = \${r.promptTokens} + \${r.completionTokens}</span>
             <span style="color: #ff00ff;">⏱️ \${r.duration}ms</span>
           </div>
         \`;

@@ -1102,19 +1102,14 @@ export class ProxyServer {
         chunks.push(chunk);
 
         // 解析 Anthropic SSE 数据提取 token 信息
-        // message_start 事件包含初始 input_tokens
-        // message_delta 事件包含最终 output_tokens
-        if (chunk.includes('event:message_start') || chunk.includes('"type":"message_start"')) {
-          const inputMatch = chunk.match(/"input_tokens":(\d+)/);
-          if (inputMatch) {
-            inputTokens = parseInt(inputMatch[1]);
-          }
+        // input_tokens 和 output_tokens 可能出现在 message_start 或 message_delta 事件中
+        const inputMatch = chunk.match(/"input_tokens":(\d+)/);
+        if (inputMatch) {
+          inputTokens = parseInt(inputMatch[1]);
         }
-        if (chunk.includes('event:message_delta') || chunk.includes('"type":"message_delta"')) {
-          const outputMatch = chunk.match(/"output_tokens":(\d+)/);
-          if (outputMatch) {
-            outputTokens = parseInt(outputMatch[1]);
-          }
+        const outputMatch = chunk.match(/"output_tokens":(\d+)/);
+        if (outputMatch) {
+          outputTokens = parseInt(outputMatch[1]);
         }
 
         res.write(value);
