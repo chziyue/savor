@@ -10,7 +10,7 @@ services:
       - TZ=Asia/Shanghai
       - NODE_ENV=production
     volumes:
-      - ./config.js:/app/config.js:ro
+      - ./config.js:/app/config.js
       - ./logs:/app/logs
       - ./data:/app/data
       - ./certs:/app/certs

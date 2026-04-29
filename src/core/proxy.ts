@@ -1343,14 +1343,42 @@ export class ProxyServer {
     // 更新本地配置引用
     Object.assign(this.config, newConfig);
 
-    // 更新 LoopGuard 配置
-    if (newConfig.loopGuard && this.loopGuard) {
-      this.loopGuard.updateConfig(newConfig.loopGuard);
+    // 更新 LoopGuard 配置（支持动态启停）
+    if (newConfig.loopGuard !== undefined) {
+      const lgEnabled = newConfig.loopGuard.enabled ?? true;
+      if (lgEnabled && !this.loopGuard) {
+        // 从无到有：创建实例
+        this.loopGuard = new LoopGuard(newConfig.loopGuard);
+        this.logger.info('[Proxy] 循环保护已动态启用');
+      } else if (!lgEnabled && this.loopGuard) {
+        // 从有到无：销毁实例
+        this.loopGuard = undefined;
+        this.logger.info('[Proxy] 循环保护已动态禁用');
+      } else if (lgEnabled && this.loopGuard) {
+        // 已存在：更新参数
+        this.loopGuard.updateConfig(newConfig.loopGuard);
+      }
     }
 
-    // 更新 RateLimiter 配置
-    if (newConfig.rateLimit && this.rateLimiter) {
-      this.rateLimiter.updateConfig(newConfig.rateLimit);
+    // 更新 RateLimiter 配置（支持动态启停）
+    if (newConfig.rateLimit !== undefined) {
+      const rlEnabled = newConfig.rateLimit.enabled ?? true;
+      if (rlEnabled && !this.rateLimiter && newConfig.rateLimit.requestsPerMinute) {
+        // 从无到有：创建实例
+        this.rateLimiter = new RateLimiter({
+          requestsPerMinute: newConfig.rateLimit.requestsPerMinute,
+          windowMs: newConfig.rateLimit.windowMs,
+          permanentLock: newConfig.rateLimit.permanentLock
+        });
+        this.logger.info('[Proxy] 限流器已动态启用');
+      } else if (!rlEnabled && this.rateLimiter) {
+        // 从有到无：销毁实例
+        this.rateLimiter = undefined;
+        this.logger.info('[Proxy] 限流器已动态禁用');
+      } else if (rlEnabled && this.rateLimiter) {
+        // 已存在：更新参数
+        this.rateLimiter.updateConfig(newConfig.rateLimit);
+      }
     }
 
     // 更新内容过滤配置

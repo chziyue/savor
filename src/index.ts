@@ -69,15 +69,13 @@ async function main() {
     crossOriginEmbedderPolicy: false,
   }));
   
-  // CORS 白名单验证
-  const corsConfig = config.cors!;
-  
-  // 支持环境变量覆盖白名单
-  const allowedOrigins = process.env.CORS_ORIGINS 
+  // 环境变量 CORS 白名单（静态，启动时读取一次即可）
+  const envCorsOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
-    : corsConfig.allowedOrigins;
-  
+    : null;
+
   // 自定义 CORS 中间件
+  // 注意：每次请求动态读取 config.cors，以支持热更新
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     
@@ -86,13 +84,17 @@ async function main() {
       return next();
     }
     
+    // 动态读取最新 CORS 配置（支持热更新）
+    const currentCors = config.cors!;
+    const allowedOrigins = envCorsOrigins || currentCors.allowedOrigins;
+
     // 白名单验证
     if (allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', String(corsConfig.credentials));
+      res.setHeader('Access-Control-Allow-Credentials', String(currentCors.credentials));
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      res.setHeader('Access-Control-Max-Age', String(corsConfig.maxAge));
+      res.setHeader('Access-Control-Max-Age', String(currentCors.maxAge));
       
       // 预检请求直接返回
       if (req.method === 'OPTIONS') {
@@ -208,7 +210,8 @@ async function main() {
     }
     logger.info(`配置: default`);
     logger.info(`安全: helmet + CORS白名单 + 验证`);
-    logger.info(`CORS白名单: ${allowedOrigins.join(', ')}`);
+    const startupOrigins = envCorsOrigins || config.cors!.allowedOrigins;
+    logger.info(`CORS白名单: ${startupOrigins.join(', ')}`);
     logger.info('========================================');
   });
   

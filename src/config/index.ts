@@ -195,6 +195,30 @@ export interface SavorConfig {
   };
 }
 
+// ==================== Deep Merge Helper ====================
+
+/**
+ * 深合并两个对象（仅一层深度，覆盖嵌套对象内的字段而不是整体替换）
+ */
+function deepMerge<T extends Record<string, unknown>>(defaults: T, overrides: Partial<T>): T {
+  const result = { ...defaults };
+  for (const key of Object.keys(overrides) as Array<keyof T>) {
+    const defaultVal = defaults[key];
+    const overrideVal = overrides[key];
+    if (
+      defaultVal && overrideVal &&
+      typeof defaultVal === 'object' && !Array.isArray(defaultVal) &&
+      typeof overrideVal === 'object' && !Array.isArray(overrideVal)
+    ) {
+      // 嵌套对象：合并而非覆盖
+      result[key] = { ...defaultVal, ...overrideVal } as T[keyof T];
+    } else if (overrideVal !== undefined) {
+      result[key] = overrideVal as T[keyof T];
+    }
+  }
+  return result;
+}
+
 // ==================== Load Configuration ====================
 
 function loadUserConfig(): Partial<SavorConfig> {
@@ -215,7 +239,8 @@ function loadUserConfig(): Partial<SavorConfig> {
   return {};
 }
 
-export const Config: SavorConfig = { ...defaultConfig, ...loadUserConfig() } as SavorConfig;
+// 使用深合并，避免用户只写部分字段时丢失默认值
+export const Config: SavorConfig = deepMerge(defaultConfig, loadUserConfig()) as SavorConfig;
 
 export function loadConfig(): SavorConfig {
   return Config;
@@ -225,10 +250,72 @@ export function loadConfig(): SavorConfig {
 
 let watcher: fs.FSWatcher | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let lastConfigMtime: number = 0;
+let currentOnUpdate: ((updatedKeys: string[], newConfig: Partial<SavorConfig>) => void) | undefined;
+
+/**
+ * 获取配置文件的修改时间
+ */
+function getConfigMtime(configPath: string): number {
+  try {
+    return fs.statSync(configPath).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * 创建 fs.watch watcher（带 rename 事件后自动重建）
+ */
+function createFsWatcher(configPath: string, handleChange: () => void): void {
+  // 先关闭旧 watcher
+  if (watcher) {
+    try { watcher.close(); } catch { /* ignore */ }
+    watcher = null;
+  }
+
+  // 文件不存在时等待
+  if (!fs.existsSync(configPath)) {
+    logger.warn('[ConfigWatcher] config.js 暂不存在，等待文件出现...');
+    return;
+  }
+
+  try {
+    watcher = fs.watch(configPath, (eventType) => {
+      if (eventType === 'change' || eventType === 'rename') {
+        logger.info('[ConfigWatcher] config.js 文件已变化', { eventType });
+        handleChange();
+
+        // rename 事件后 watcher 可能失效（编辑器原子写入：删旧文件 → 重命名新文件）
+        // 延迟重建 watcher 以确保持续监听
+        if (eventType === 'rename') {
+          setTimeout(() => {
+            createFsWatcher(configPath, handleChange);
+          }, 300);
+        }
+      }
+    });
+
+    watcher.on('error', (err) => {
+      logger.error('[ConfigWatcher] 监听错误，尝试重建', { error: err.message });
+      // 出错后尝试重建
+      setTimeout(() => {
+        createFsWatcher(configPath, handleChange);
+      }, 1000);
+    });
+  } catch (err) {
+    logger.warn('[ConfigWatcher] fs.watch 创建失败，依赖轮询模式', {
+      error: err instanceof Error ? err.message : String(err)
+    });
+  }
+}
 
 /**
  * 启动配置文件监听
- * 当 config.js 文件变化时，自动重新加载支持的配置项
+ * 使用 fs.watch + 轮询双保险策略
+ * - fs.watch: 低延迟，但在 Docker bind mount / 某些文件系统上不可靠
+ * - 轮询: 作为 fallback，基于 mtime 检测变化，确保 Docker 环境下也能工作
  */
 export function startConfigWatcher(onUpdate?: (updatedKeys: string[], newConfig: Partial<SavorConfig>) => void): void {
   const configPath = path.join(process.cwd(), 'config.js');
@@ -238,31 +325,44 @@ export function startConfigWatcher(onUpdate?: (updatedKeys: string[], newConfig:
     return;
   }
 
+  currentOnUpdate = onUpdate;
+
+  // 记录初始 mtime
+  lastConfigMtime = getConfigMtime(configPath);
+
   // 防抖处理，避免频繁触发
   const handleChange = () => {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
     debounceTimer = setTimeout(() => {
+      // 更新 mtime 记录（防止轮询重复触发）
+      lastConfigMtime = getConfigMtime(configPath);
       reloadHotConfig(onUpdate);
     }, 1000);  // 1秒防抖
   };
 
-  watcher = fs.watch(configPath, (eventType) => {
-    // 同时监听 'change' 和 'rename' 事件
-    // - 'change': 直接写入（某些编辑器）
-    // - 'rename': 原子写入（vim、VS Code 等编辑器先写临时文件再重命名）
-    if (eventType === 'change' || eventType === 'rename') {
-      logger.info('[ConfigWatcher] config.js 文件已变化', { eventType });
-      handleChange();
+  // 策略1: fs.watch（低延迟，带 rename 自动重建）
+  createFsWatcher(configPath, handleChange);
+
+  // 策略2: 轮询 fallback（每 3 秒检查 mtime）
+  // 解决 Docker bind mount、某些网络文件系统下 fs.watch 不触发的问题
+  pollTimer = setInterval(() => {
+    try {
+      const currentMtime = getConfigMtime(configPath);
+      if (currentMtime > 0 && currentMtime !== lastConfigMtime) {
+        logger.info('[ConfigWatcher] 轮询检测到 config.js 变化', {
+          oldMtime: new Date(lastConfigMtime).toISOString(),
+          newMtime: new Date(currentMtime).toISOString()
+        });
+        handleChange();
+      }
+    } catch {
+      // stat 失败时静默处理
     }
-  });
+  }, 3000);
 
-  watcher.on('error', (err) => {
-    logger.error('[ConfigWatcher] 监听错误', { error: err.message });
-  });
-
-  logger.info('[ConfigWatcher] 已启动配置文件监听', { configPath });
+  logger.info('[ConfigWatcher] 已启动配置文件监听（fs.watch + 轮询双保险）', { configPath });
 }
 
 /**
@@ -270,10 +370,18 @@ export function startConfigWatcher(onUpdate?: (updatedKeys: string[], newConfig:
  */
 export function stopConfigWatcher(): void {
   if (watcher) {
-    watcher.close();
+    try { watcher.close(); } catch { /* ignore */ }
     watcher = null;
-    logger.info('[ConfigWatcher] 已停止配置文件监听');
   }
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  logger.info('[ConfigWatcher] 已停止配置文件监听');
 }
 
 /**

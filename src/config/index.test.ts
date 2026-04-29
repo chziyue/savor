@@ -182,9 +182,9 @@ module.exports = {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // 等待防抖完成
+      // 等待防抖完成（需要超过轮询间隔 3s 以验证只触发一次）
       const timeoutPromise = new Promise<number>((resolve) => {
-        setTimeout(() => resolve(callCount), 2500);
+        setTimeout(() => resolve(callCount), 5000);
       });
 
       await Promise.race([callbackPromise, timeoutPromise]);
@@ -216,9 +216,9 @@ module.exports = {
 };
 `);
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
-      // 不应该触发更新
+      // 不应该触发更新（fs.watch 和轮询都已停止）
       expect(callbackCalled).toBe(false);
     });
 
