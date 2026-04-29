@@ -60,6 +60,14 @@ const consoleLogger = pino({
 const accessStream = fs.createWriteStream(accessLogPath, { flags: 'a' });
 const errorStream = fs.createWriteStream(errorLogPath, { flags: 'a' });
 
+// 监听流错误，避免未处理的 error 事件导致进程崩溃
+accessStream.on('error', (err) => {
+  console.error('[Logger] access.log 写入错误:', err.message);
+});
+errorStream.on('error', (err) => {
+  console.error('[Logger] error.log 写入错误:', err.message);
+});
+
 /**
  * 兼容 Winston API 的 Logger
  * Winston: logger.info(message, meta)
@@ -84,6 +92,15 @@ export const logger = {
   warn: (message: string, meta?: object) => {
     const metaObj = meta || {};
     consoleLogger.warn(metaObj, message);
+    // 写入 access 日志文件（warn 级别同样重要）
+    const logLine = JSON.stringify({
+      level: 'warn',
+      time: new Date().toISOString(),
+      service: 'savor',
+      msg: message,
+      ...metaObj
+    }) + '\n';
+    accessStream.write(logLine);
   },
   
   error: (message: string, meta?: object) => {

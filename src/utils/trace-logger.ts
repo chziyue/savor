@@ -124,6 +124,12 @@ export class TraceLogger {
 
     // 创建写入流
     this.writeStream = fs.createWriteStream(this.currentFile, { flags: 'a' });
+
+    // 监听流错误，避免未处理的 error 事件导致进程崩溃
+    this.writeStream.on('error', (err) => {
+      logger.error('[Trace] 写入流错误，已禁用追踪', { error: err.message });
+      this.enabled = false;
+    });
     
     logger.info(`[Trace] 新建追踪文件: ${this.currentFile}`);
   }
