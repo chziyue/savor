@@ -671,15 +671,15 @@ export function renderLogsPage(): string {
           filterMarkersHtml = '<div class="filter-markers-container">' +
             r.filterMarkers.map(function(marker) {
               var text = marker.trim();
-              return '<span class="log-filter-marker">' + text.toUpperCase() + '</span>';
+              return '<span class="log-filter-marker">' + escapeHtml(text.toUpperCase()) + '</span>';
             }).join('') + '</div>';
         }
 
-        return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + globalIndex + '" data-id="' + r.id + '">' +
+        return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + globalIndex + '" data-id="' + escapeHtml(r.id) + '">' +
           '<div class="log-summary" onclick="toggleLog(event, ' + globalIndex + ')">' +
           '<span class="log-time">' + timeStr + '</span>' +
-          '<span class="log-status ' + r.status + '">' + r.status.toUpperCase() + '</span>' +
-          '<span class="log-model">' + r.model + '</span>' +
+          '<span class="log-status ' + escapeHtml(r.status) + '">' + escapeHtml(r.status).toUpperCase() + '</span>' +
+          '<span class="log-model">' + escapeHtml(r.model) + '</span>' +
           filterMarkersHtml +
           '<span class="log-tokens">Tokens: ' + r.totalTokens + ' = ' + r.promptTokens + ' + ' + r.completionTokens + '</span>' +
           '<span class="log-duration">⏱️ ' + r.duration + 'ms</span>' +
@@ -687,13 +687,13 @@ export function renderLogsPage(): string {
           '</div>' +
           '<div class="log-details" id="log-details-' + globalIndex + '">' +
           '<div class="detail-row"><span class="detail-label">时间戳:</span><span class="detail-value">' + date.toISOString() + '</span></div>' +
-          '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + r.model + '</span></div>' +
-          '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + r.status + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + escapeHtml(r.model) + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + escapeHtml(r.status) + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">Prompt Tokens:</span><span class="detail-value">' + r.promptTokens + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">Completion Tokens:</span><span class="detail-value">' + r.completionTokens + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">Total Tokens:</span><span class="detail-value">' + r.totalTokens + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">耗时:</span><span class="detail-value">' + r.duration + 'ms</span></div>' +
-          (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + r.errorMessage + '</span></div>' : '') +
+          (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + escapeHtml(r.errorMessage) + '</span></div>' : '') +
           '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">请求体 (Request):</span></div>' +
           '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, ' + "'" + 'req-' + globalIndex + "'" + ')">复制</button>' +
           '<div class="code-block"><pre id="req-' + globalIndex + '" class="request-body"></pre></div></div>' +

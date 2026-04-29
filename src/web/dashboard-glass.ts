@@ -851,15 +851,15 @@ export function renderGlassDashboard(): string {
           var filterMarkersHtml = '';
           if (r.filterMarkers && r.filterMarkers.length > 0) {
             filterMarkersHtml = r.filterMarkers.map(function(marker) {
-              var text = marker.trim();
+              var text = escapeHtml(marker.trim());
               return '<span style="background: rgba(52, 199, 89, 0.1); color: rgb(52, 199, 89); padding: 2px 8px; border-radius: 3px; font-size: 0.7rem; margin-left: 8px; text-transform: uppercase; font-weight: 600;">' + text + '</span>';
             }).join('');
           }
           return \`
           <div class="log-entry">
             <span class="log-time">\${new Date(r.timestamp).toLocaleTimeString('zh-CN', {hour12: false})}</span>
-            <span class="log-status \${r.status}">[\${r.status.toUpperCase()}]</span>
-            <span class="log-model">\${r.model}</span>
+            <span class="log-status \${escapeHtml(r.status)}">[\${escapeHtml(r.status).toUpperCase()}]</span>
+            <span class="log-model">\${escapeHtml(r.model)}</span>
             \${filterMarkersHtml}
             <span class="log-tokens">Tokens: \${r.totalTokens} = \${r.promptTokens} + \${r.completionTokens}</span>
             <span class="log-duration">⏱️ \${r.duration}ms</span>
@@ -875,6 +875,12 @@ export function renderGlassDashboard(): string {
     loadYesterdayStats();
     loadTodayStats();
     loadLogs();
+
+    // HTML 转义（防 XSS）
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
     
     // 定时刷新
     setInterval(loadTodayStats, 5000);

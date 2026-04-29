@@ -657,6 +657,12 @@ export function renderCyberDashboard(): string {
       if (todayPrivacyFilteredEl) todayPrivacyFilteredEl.textContent = today.privacyFiltered || 0;
     }
     
+    // HTML 转义（防 XSS）
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
     // 加载实时日志
     async function loadLogs() {
       try {
@@ -669,15 +675,15 @@ export function renderCyberDashboard(): string {
           var filterMarkersHtml = '';
           if (r.filterMarkers && r.filterMarkers.length > 0) {
             filterMarkersHtml = r.filterMarkers.map(function(marker) {
-              var text = marker.trim();
+              var text = escapeHtml(marker.trim());
               return '<span style="background: rgba(0, 255, 136, 0.2); color: #00ff88; padding: 2px 8px; border-radius: 3px; font-size: 0.7rem; margin-left: 8px; text-transform: uppercase;">' + text + '</span>';
             }).join('');
           }
           return \`
           <div class="log-entry">
             <span class="log-time">\${new Date(r.timestamp).toLocaleTimeString('zh-CN', {hour12: false})}</span>
-            <span class="log-status \${r.status}">[\${r.status.toUpperCase()}]</span>
-            <span style="color: #00f5ff;">\${r.model}</span>
+            <span class="log-status \${escapeHtml(r.status)}">[\${escapeHtml(r.status).toUpperCase()}]</span>
+            <span style="color: #00f5ff;">\${escapeHtml(r.model)}</span>
             \${filterMarkersHtml}
             <span style="color: rgba(255,255,255,0.6);">Tokens: \${r.totalTokens} = \${r.promptTokens} + \${r.completionTokens}</span>
             <span style="color: #ff00ff;">⏱️ \${r.duration}ms</span>

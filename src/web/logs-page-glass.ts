@@ -20,6 +20,12 @@
 
 import { getRecentLogsSummary, getTodayLogsCount } from '../utils/stats.js';
 
+/** HTML 转义（防 XSS） */
+function escapeHtml(str: string): string {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export function renderLogsPageGlass(): string {
   // 服务器端预先获取今日日志数据（直接传 today 参数）
   const todayLogs = getRecentLogsSummary(100, undefined, true);
@@ -689,15 +695,15 @@ export function renderLogsPageGlass(): string {
               filterMarkersHtml = '<div class="filter-markers-container">' +
                 markers.map((marker: string) => {
                   const text = marker.trim();
-                  return '<span class="log-filter-marker">' + text.toUpperCase() + '</span>';
+                  return '<span class="log-filter-marker">' + escapeHtml(text.toUpperCase()) + '</span>';
                 }).join('') + '</div>';
             }
           }
-          return `<div class="log-entry ${isError ? 'error' : ''}" data-index="${index}" data-id="${r.id}">
+          return `<div class="log-entry ${isError ? 'error' : ''}" data-index="${index}" data-id="${escapeHtml(r.id)}">
             <div class="log-summary" onclick="toggleLog(event, ${index})">
-            <span class="log-time">${timeStr}</span>
-            <span class="log-status ${r.status}">${r.status.toUpperCase()}</span>
-            <span class="log-model">${r.model}</span>
+            <span class="log-time">${escapeHtml(timeStr)}</span>
+            <span class="log-status ${escapeHtml(r.status)}">${escapeHtml(r.status.toUpperCase())}</span>
+            <span class="log-model">${escapeHtml(r.model)}</span>
             ${filterMarkersHtml}
             <span class="log-tokens">Tokens: ${r.totalTokens} = ${r.promptTokens} + ${r.completionTokens}</span>
             <span class="log-duration">⏱️ ${r.duration}ms</span>
@@ -705,13 +711,13 @@ export function renderLogsPageGlass(): string {
             </div>
             <div class="log-details" id="log-details-${index}">
             <div class="detail-row"><span class="detail-label">时间戳:</span><span class="detail-value">${date.toISOString()}</span></div>
-            <div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">${r.model}</span></div>
-            <div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">${r.status}</span></div>
+            <div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">${escapeHtml(r.model)}</span></div>
+            <div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">${escapeHtml(r.status)}</span></div>
             <div class="detail-row"><span class="detail-label">Prompt Tokens:</span><span class="detail-value">${r.promptTokens}</span></div>
             <div class="detail-row"><span class="detail-label">Completion Tokens:</span><span class="detail-value">${r.completionTokens}</span></div>
             <div class="detail-row"><span class="detail-label">Total Tokens:</span><span class="detail-value">${r.totalTokens}</span></div>
             <div class="detail-row"><span class="detail-label">耗时:</span><span class="detail-value">${r.duration}ms</span></div>
-            ${r.errorMessage ? `<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">${r.errorMessage}</span></div>` : ''}
+            ${r.errorMessage ? `<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">${escapeHtml(r.errorMessage)}</span></div>` : ''}
             <div class="detail-row" style="margin-top: 15px;"><span class="detail-label">请求体 (Request):</span></div>
             <div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, 'req-${index}')">复制</button>
             <div class="code-block"><pre id="req-${index}" class="request-body"></pre></div></div>
@@ -750,6 +756,12 @@ export function renderLogsPageGlass(): string {
     
     // 初始化主题
     initTheme();
+
+    // HTML 转义（防 XSS）
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
     
     // 初始日志 ID 列表（服务器端渲染）
     var logIds = ${JSON.stringify(todayLogs.map(r => r.id))};
@@ -787,16 +799,16 @@ export function renderLogsPageGlass(): string {
           if (r.filterMarkers && r.filterMarkers.length > 0) {
             filterMarkersHtml = '<div class="filter-markers-container">' +
               r.filterMarkers.map(function(marker) {
-                var text = marker.trim();
+                var text = escapeHtml(marker.trim());
                 return '<span class="log-filter-marker">' + text.toUpperCase() + '</span>';
               }).join('') + '</div>';
           }
           
-          return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + index + '" data-id="' + r.id + '">' +
+          return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + index + '" data-id="' + escapeHtml(r.id) + '">' +
             '<div class="log-summary" onclick="toggleLog(event, ' + index + ')">' +
             '<span class="log-time">' + timeStr + '</span>' +
-            '<span class="log-status ' + r.status + '">' + r.status.toUpperCase() + '</span>' +
-            '<span class="log-model">' + r.model + '</span>' +
+            '<span class="log-status ' + escapeHtml(r.status) + '">' + escapeHtml(r.status).toUpperCase() + '</span>' +
+            '<span class="log-model">' + escapeHtml(r.model) + '</span>' +
             filterMarkersHtml +
             '<span class="log-tokens">Tokens: ' + r.totalTokens + ' = ' + r.promptTokens + ' + ' + r.completionTokens + '</span>' +
             '<span class="log-duration">⏱️ ' + r.duration + 'ms</span>' +
@@ -804,13 +816,13 @@ export function renderLogsPageGlass(): string {
             '</div>' +
             '<div class="log-details" id="log-details-' + index + '">' +
             '<div class="detail-row"><span class="detail-label">时间戳:</span><span class="detail-value">' + date.toISOString() + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + r.model + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + r.status + '</span></div>' +
+            '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + escapeHtml(r.model) + '</span></div>' +
+            '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + escapeHtml(r.status) + '</span></div>' +
             '<div class="detail-row"><span class="detail-label">Prompt Tokens:</span><span class="detail-value">' + r.promptTokens + '</span></div>' +
             '<div class="detail-row"><span class="detail-label">Completion Tokens:</span><span class="detail-value">' + r.completionTokens + '</span></div>' +
             '<div class="detail-row"><span class="detail-label">Total Tokens:</span><span class="detail-value">' + r.totalTokens + '</span></div>' +
             '<div class="detail-row"><span class="detail-label">耗时:</span><span class="detail-value">' + r.duration + 'ms</span></div>' +
-            (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + r.errorMessage + '</span></div>' : '') +
+            (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + escapeHtml(r.errorMessage) + '</span></div>' : '') +
             '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">请求体 (Request):</span></div>' +
             '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, &#39;req-' + index + '&#39;)">复制</button>' +
             '<div class="code-block"><pre id="req-' + index + '" class="request-body"></pre></div></div>' +
@@ -932,26 +944,26 @@ export function renderLogsPageGlass(): string {
         var isError = r.status !== 'success';
         var filterMarkersHtml = '';
         if (r.filterMarkers && r.filterMarkers.length > 0) {
-          filterMarkersHtml = '<div class="filter-markers-container">' + r.filterMarkers.map(function(m) { return '<span class="log-filter-marker">' + m.trim().toUpperCase() + '</span>'; }).join('') + '</div>';
+          filterMarkersHtml = '<div class="filter-markers-container">' + r.filterMarkers.map(function(m) { return '<span class="log-filter-marker">' + escapeHtml(m.trim().toUpperCase()) + '</span>'; }).join('') + '</div>';
         }
-        return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + globalIndex + '" data-id="' + r.id + '">' +
+        return '<div class="log-entry ' + (isError ? 'error' : '') + '" data-index="' + globalIndex + '" data-id="' + escapeHtml(r.id) + '">' +
           '<div class="log-summary" onclick="toggleLog(event, ' + globalIndex + ')">' +
           '<span class="log-time">' + timeStr + '</span>' +
-          '<span class="log-status ' + r.status + '">' + r.status.toUpperCase() + '</span>' +
-          '<span class="log-model">' + r.model + '</span>' +
+          '<span class="log-status ' + escapeHtml(r.status) + '">' + escapeHtml(r.status).toUpperCase() + '</span>' +
+          '<span class="log-model">' + escapeHtml(r.model) + '</span>' +
           filterMarkersHtml +
           '<span class="log-tokens">Tokens: ' + r.totalTokens + ' = ' + r.promptTokens + ' + ' + r.completionTokens + '</span>' +
           '<span class="log-duration">⏱️ ' + r.duration + 'ms</span>' +
           '<span class="expand-icon">▼</span></div>' +
           '<div class="log-details" id="log-details-' + globalIndex + '">' +
           '<div class="detail-row"><span class="detail-label">时间戳:</span><span class="detail-value">' + date.toISOString() + '</span></div>' +
-          '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + r.model + '</span></div>' +
-          '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + r.status + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">模型:</span><span class="detail-value">' + escapeHtml(r.model) + '</span></div>' +
+          '<div class="detail-row"><span class="detail-label">状态:</span><span class="detail-value">' + escapeHtml(r.status) + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">Prompt Tokens:</span><span class="detail-value">' + r.promptTokens + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">Completion Tokens:</span><span class="detail-value">' + r.completionTokens + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">Total Tokens:</span><span class="detail-value">' + r.totalTokens + '</span></div>' +
           '<div class="detail-row"><span class="detail-label">耗时:</span><span class="detail-value">' + r.duration + 'ms</span></div>' +
-          (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + r.errorMessage + '</span></div>' : '') +
+          (r.errorMessage ? '<div class="detail-row"><span class="detail-label">错误信息:</span><span class="detail-value error-message">' + escapeHtml(r.errorMessage) + '</span></div>' : '') +
           '<div class="detail-row" style="margin-top: 15px;"><span class="detail-label">请求体 (Request):</span></div>' +
           '<div class="code-block-container"><button class="copy-btn" onclick="copyCode(event, &#39;req-' + globalIndex + '&#39;)">复制</button>' +
           '<div class="code-block"><pre id="req-' + globalIndex + '" class="request-body"></pre></div></div>' +
