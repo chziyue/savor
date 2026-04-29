@@ -199,10 +199,14 @@ export interface SavorConfig {
 
 // ==================== Deep Merge Helper ====================
 
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends Record<string, unknown> ? DeepPartial<T[P]> : T[P];
+};
+
 /**
  * 深合并两个对象（仅一层深度，覆盖嵌套对象内的字段而不是整体替换）
  */
-function deepMerge<T extends Record<string, unknown>>(defaults: T, overrides: Partial<T>): T {
+function deepMerge<T extends Record<string, unknown>>(defaults: T, overrides: DeepPartial<T>): T {
   const result = { ...defaults };
   for (const key of Object.keys(overrides) as Array<keyof T>) {
     const defaultVal = defaults[key];
@@ -242,7 +246,10 @@ function loadUserConfig(): Partial<SavorConfig> {
 }
 
 // 使用深合并，避免用户只写部分字段时丢失默认值
-export const Config: SavorConfig = deepMerge(defaultConfig, loadUserConfig()) as SavorConfig;
+export const Config: SavorConfig = deepMerge(
+  defaultConfig,
+  loadUserConfig() as DeepPartial<typeof defaultConfig>
+) as SavorConfig;
 
 export function loadConfig(): SavorConfig {
   return Config;
