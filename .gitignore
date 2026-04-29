@@ -50,3 +50,4 @@ certs/*.cnf
 
 # Code review reports (local only)
 CODE_REVIEW.md
+AUDIT.md

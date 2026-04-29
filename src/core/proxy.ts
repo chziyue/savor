@@ -429,7 +429,12 @@ export class ProxyServer {
         });
       }
 
-      res.status(500).json(errorResponse);
+      // 如果流式响应已经开始发送（headers 已发送），不能再设置状态码
+      if (res.headersSent) {
+        res.end();
+      } else {
+        res.status(500).json(errorResponse);
+      }
     }
   }
 
@@ -1063,7 +1068,12 @@ export class ProxyServer {
         responseBody: JSON.stringify(errorResponse, null, 2)
       });
 
-      res.status(500).json(errorResponse);
+      // 如果流式响应已经开始发送（headers 已发送），不能再设置状态码
+      if (res.headersSent) {
+        res.end();
+      } else {
+        res.status(500).json(errorResponse);
+      }
     }
   }
 
