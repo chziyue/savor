@@ -451,6 +451,14 @@ export class ProxyServer {
     contextTruncated: boolean = false,
     savedTokens: number = 0
   ): Promise<void> {
+    // 检查上游响应状态（流式也需要检查）
+    if (!upstreamRes.ok) {
+      const errorText = await upstreamRes.text();
+      logger.error(`[${requestId}] 上游流式响应错误: ${upstreamRes.status} ${upstreamRes.statusText}`, { body: errorText });
+      res.status(upstreamRes.status).json({ error: { message: `上游响应错误: ${upstreamRes.statusText}`, code: 'UPSTREAM_ERROR' } });
+      return;
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -1090,6 +1098,17 @@ export class ProxyServer {
     contextTruncated: boolean = false,
     savedTokens: number = 0
   ): Promise<void> {
+    // 检查上游响应状态（流式也需要检查）
+    if (!upstreamRes.ok) {
+      const errorText = await upstreamRes.text();
+      logger.error(`[${requestId}] Anthropic 上游流式响应错误: ${upstreamRes.status}`, { body: errorText });
+      res.status(upstreamRes.status).json({
+        type: 'error',
+        error: { type: 'upstream_error', message: upstreamRes.statusText }
+      });
+      return;
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -1162,6 +1181,17 @@ export class ProxyServer {
     contextTruncated: boolean = false,
     savedTokens: number = 0
   ): Promise<void> {
+    // 检查上游响应状态
+    if (!upstreamRes.ok) {
+      const errorText = await upstreamRes.text();
+      logger.error(`[${requestId}] Anthropic 上游响应错误: ${upstreamRes.status} ${upstreamRes.statusText}`, { body: errorText });
+      res.status(upstreamRes.status).json({
+        type: 'error',
+        error: { type: 'upstream_error', message: upstreamRes.statusText }
+      });
+      return;
+    }
+
     const data: AnthropicMessagesResponse = await upstreamRes.json() as AnthropicMessagesResponse;
 
     if (data.usage) {
