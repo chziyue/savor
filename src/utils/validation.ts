@@ -21,6 +21,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodObject, ZodError, ZodTypeAny } from 'zod';
 import { ValidationError } from './errors.js';
+import { logger } from './logger.js';
 
 type ZodSchema = ZodObject<Record<string, ZodTypeAny>>;
 
@@ -64,7 +65,7 @@ export const optionalValidate = (schema: ZodSchema) => {
       });
     } catch (error) {
       if (error instanceof ZodError) {
-        console.warn('[Validation Warning] 请求验证失败但已放行:', error.issues);
+        logger.warn('[Validation] 请求验证失败但已放行', { issues: error.issues });
       }
     }
     next();

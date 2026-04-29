@@ -27,6 +27,8 @@ import { StatsDatabase, RequestRecord } from './sqlite.js';
 export class ArchiveManager {
   private archiveDir: string;
   private retentionDays: number;
+  private scheduleTimeout: ReturnType<typeof setTimeout> | null = null;
+  private scheduleInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(archiveDir: string = './data/archive', retentionDays: number = 7) {
     this.archiveDir = archiveDir;
@@ -207,10 +209,10 @@ export class ArchiveManager {
 
     const delay = nextRun.getTime() - now.getTime();
 
-    setTimeout(() => {
+    this.scheduleTimeout = setTimeout(() => {
       this.archive();
       // 之后每24小时执行一次
-      setInterval(() => this.archive(), 24 * 60 * 60 * 1000);
+      this.scheduleInterval = setInterval(() => this.archive(), 24 * 60 * 60 * 1000);
     }, delay);
 
     logger.info('[Archive] 定时归档已设置', { 

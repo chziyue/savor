@@ -19,6 +19,7 @@
  */
 
 import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import crypto from 'crypto';
 import { logger } from '../utils/logger.js';
 import { recordRequest, initStats } from '../utils/stats.js';
 import { LoopGuard } from '../cache/index.js';
@@ -70,11 +71,8 @@ export class ProxyServer {
     // 初始化循环保护（兼容新旧配置格式）
     const loopGuardEnabled = config.loopGuard?.enabled ?? (config.features?.loopGuard !== false);
     if (loopGuardEnabled) {
-      // 如果注入了 loopGuard，使用注入的
-      if (finalDeps.loopGuard) {
-        this.loopGuard = finalDeps.loopGuard as unknown as LoopGuard;
-      }
       const lgConfig = config.loopGuard || config.loopGuardConfig || {};
+      this.loopGuard = (finalDeps.loopGuard as unknown as LoopGuard) || new LoopGuard(lgConfig);
       this.logger.info('[Proxy] 循环保护已启用', lgConfig);
     }
 
@@ -82,9 +80,11 @@ export class ProxyServer {
     const rateLimitEnabled = config.rateLimit?.enabled ?? (config.features?.rateLimit !== false);
     const rlConfig = config.rateLimit || config.rateLimitConfig;
     if (rateLimitEnabled && rlConfig) {
-      if (finalDeps.rateLimiter) {
-        this.rateLimiter = finalDeps.rateLimiter as unknown as RateLimiter;
-      }
+      this.rateLimiter = (finalDeps.rateLimiter as unknown as RateLimiter) || new RateLimiter({
+        requestsPerMinute: rlConfig.requestsPerMinute || 30,
+        windowMs: rlConfig.windowMs,
+        permanentLock: rlConfig.permanentLock
+      });
       this.logger.info('[Proxy] 限流器已启用', rlConfig);
     }
 
@@ -111,7 +111,7 @@ export class ProxyServer {
    * 处理请求转发
    */
   async handleRequest(req: ExpressRequest, res: ExpressResponse): Promise<void> {
-    const requestId = Math.random().toString(36).substring(2, 8);
+    const requestId = crypto.randomBytes(6).toString('hex');
     const startTime = Date.now();
     let body = req.body;
     let filterMarkers: string[] | undefined;
@@ -472,13 +472,14 @@ export class ProxyServer {
     let promptTokens = 0;
     let completionTokens = 0;
     const chunks: string[] = [];
+    const decoder = new TextDecoder();
 
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         
-        const chunk = new TextDecoder().decode(value);
+        const chunk = decoder.decode(value, { stream: true });
         chunks.push(chunk);
         
         // 解析 SSE 数据尝试提取 token 信息
@@ -837,7 +838,7 @@ export class ProxyServer {
    * 处理 Anthropic 协议请求转发
    */
   async handleAnthropicRequest(req: ExpressRequest, res: ExpressResponse): Promise<void> {
-    const requestId = Math.random().toString(36).substring(2, 8);
+    const requestId = crypto.randomBytes(6).toString('hex');
     const startTime = Date.now();
     let body = req.body as AnthropicMessagesRequest;
     let filterMarkers: string[] | undefined;
@@ -1121,13 +1122,14 @@ export class ProxyServer {
     let inputTokens = 0;
     let outputTokens = 0;
     const chunks: string[] = [];
+    const decoder = new TextDecoder();
 
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = new TextDecoder().decode(value);
+        const chunk = decoder.decode(value, { stream: true });
         chunks.push(chunk);
 
         // 解析 Anthropic SSE 数据提取 token 信息
@@ -1364,7 +1366,7 @@ export class ProxyServer {
    */
   private createAnthropicStopResponse(): AnthropicMessagesResponse {
     return {
-      id: `stop_${Math.random().toString(36).substring(2, 8)}`,
+      id: `stop_${crypto.randomBytes(4).toString('hex')}`,
       type: 'message',
       role: 'assistant',
       content: [

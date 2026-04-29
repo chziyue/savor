@@ -114,8 +114,8 @@ export function initStats(): void {
  */
 export function shutdownStats(): void {
   if (writeQueue) {
-    writeQueue.stop();
-    writeQueue.flush(); // 写入剩余数据
+    writeQueue.flush(); // 先写入剩余数据
+    writeQueue.stop();  // 再停止定时器
     logger.info('[Stats] 异步队列已关闭');
   }
   db?.close();
@@ -389,8 +389,12 @@ export async function recoverFromLogs(days: number = 7): Promise<number> {
 
 // 辅助函数
 function createEmptyDailyStats(): DailyStats {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
   return {
-    date: new Date().toISOString().split('T')[0],
+    date: `${year}-${month}-${day}`,
     totalRequests: 0,
     successRequests: 0,
     errorRequests: 0,

@@ -147,14 +147,15 @@ export class RateLimiter {
     if (state.isLocked) {
       // 检查是否配置了自动解锁时间
       if (state.autoUnlockAt && now >= state.autoUnlockAt) {
-        // 自动解锁
+        // 自动解锁（先保存锁定时长再清除）
+        const lockDuration = state.lockTime ? ((now - state.lockTime) / 1000).toFixed(0) : '0';
         state.isLocked = false;
         state.requests = [];
         state.lockTime = undefined;
         state.autoUnlockAt = undefined;
         logger.warn('[RateLimiter] 客户端自动解锁', {
           clientId,
-          lockedDuration: state.lockTime ? ((now - state.lockTime) / 1000).toFixed(0) : '0'
+          lockedDuration: `${lockDuration}秒`
         });
       } else {
         // 仍在锁定中
@@ -339,6 +340,7 @@ export class RateLimiter {
           state.isLocked = false;
           state.requests = [];
           state.lockTime = undefined;
+          state.autoUnlockAt = undefined;
           logger.warn('[RateLimiter] 客户端永久锁定已手动解除', {
             clientId: id,
             lockedDuration: `${lockDuration}秒`
@@ -378,6 +380,7 @@ export class RateLimiter {
     state.isLocked = false;
     state.requests = [];
     state.lockTime = undefined;
+    state.autoUnlockAt = undefined;
     
     logger.warn('[RateLimiter] !!! 客户端永久锁定已手动解除 !!!', {
       clientId,

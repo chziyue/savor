@@ -24,6 +24,7 @@ import { VERSION } from './version.js';
 import helmet from 'helmet';
 import https from 'https';
 import { loadConfig, startConfigWatcher } from './config/index.js';
+import type { SavorConfig } from './config/index.js';
 import { ProxyServer } from './core/proxy.js';
 import { logger } from './utils/logger.js';
 import { createWebServer } from './web/server.js';
@@ -39,7 +40,7 @@ function ensureLogDir(logDir: string) {
 }
 
 // 确保追踪目录存在
-function ensureTraceDir(config: any) {
+function ensureTraceDir(config: SavorConfig) {
   if (config.fullTrace?.enabled && config.fullTrace?.traceDir) {
     const traceDir = config.fullTrace.traceDir;
     if (!fs.existsSync(traceDir)) {

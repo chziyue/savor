@@ -64,6 +64,8 @@ export interface LogSummaryRow {
 export class StatsDatabase {
   private db: Database.Database;
   private dbPath: string;
+  private cleanupTimeout: ReturnType<typeof setTimeout> | null = null;
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(dbPath: string = './data/stats.db') {
     this.dbPath = dbPath;
@@ -164,10 +166,10 @@ export class StatsDatabase {
     logger.info(`[StatsDB] 定时清理任务将在 ${next3AM.toLocaleString('zh-CN')} 执行`);
     
     // 设置定时器
-    setTimeout(() => {
+    this.cleanupTimeout = setTimeout(() => {
       this.cleanupOldRecords();
       // 之后每 24 小时执行一次
-      setInterval(() => this.cleanupOldRecords(), 24 * 60 * 60 * 1000);
+      this.cleanupInterval = setInterval(() => this.cleanupOldRecords(), 24 * 60 * 60 * 1000);
     }, delay);
   }
   
@@ -211,6 +213,13 @@ export class StatsDatabase {
     // 验证表名和列名（只允许字母、数字、下划线）
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table) || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(column)) {
       logger.error(`[StatsDB] 迁移参数无效：${table}.${column}`);
+      return;
+    }
+
+    // 验证列类型（白名单防止 SQL 注入）
+    const ALLOWED_TYPES = ['INTEGER DEFAULT 0', 'TEXT', 'REAL DEFAULT 0'];
+    if (!ALLOWED_TYPES.includes(type)) {
+      logger.error(`[StatsDB] 不允许的列类型：${type}`);
       return;
     }
 
@@ -605,6 +614,8 @@ export class StatsDatabase {
   }
 
   close(): void {
+    if (this.cleanupTimeout) { clearTimeout(this.cleanupTimeout); this.cleanupTimeout = null; }
+    if (this.cleanupInterval) { clearInterval(this.cleanupInterval); this.cleanupInterval = null; }
     this.db.close();
     logger.info('[StatsDB] 数据库已关闭');
   }

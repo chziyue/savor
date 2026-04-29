@@ -252,7 +252,6 @@ let watcher: fs.FSWatcher | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let lastConfigMtime: number = 0;
-let currentOnUpdate: ((updatedKeys: string[], newConfig: Partial<SavorConfig>) => void) | undefined;
 
 /**
  * 获取配置文件的修改时间
@@ -324,8 +323,6 @@ export function startConfigWatcher(onUpdate?: (updatedKeys: string[], newConfig:
     logger.info('[ConfigWatcher] config.js 不存在，跳过监听');
     return;
   }
-
-  currentOnUpdate = onUpdate;
 
   // 记录初始 mtime
   lastConfigMtime = getConfigMtime(configPath);
