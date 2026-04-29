@@ -143,8 +143,23 @@ async function main() {
     });
   });
   
+  // ==================== 管理 API IP 白名单中间件 ====================
+  const adminAuth = (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
+    const whitelist = config.adminWhitelist || ['127.0.0.1'];
+    // 获取客户端 IP（支持 IPv4-mapped IPv6 如 ::ffff:127.0.0.1）
+    const rawIp = req.ip || req.socket.remoteAddress || '';
+    const clientIp = rawIp.replace(/^::ffff:/, '');
+
+    if (whitelist.includes(clientIp)) {
+      return next();
+    }
+
+    logger.warn('[Admin] 拒绝非白名单 IP 访问管理 API', { clientIp, path: req.path });
+    res.status(403).json({ error: 'Forbidden', message: '当前 IP 不在管理白名单中' });
+  };
+
   // 限流状态查询端点
-  app.get('/rate-limit/status', asyncHandler(async (req, res) => {
+  app.get('/rate-limit/status', adminAuth, asyncHandler(async (req, res) => {
     const clientId = req.query.clientId as string | undefined;
     
     if (clientId) {
@@ -159,7 +174,7 @@ async function main() {
   }));
   
   // 限流手动重置端点
-  app.post('/rate-limit/reset', asyncHandler(async (req, res) => {
+  app.post('/rate-limit/reset', adminAuth, asyncHandler(async (req, res) => {
     const clientId = req.query.clientId as string | undefined;
     const all = req.query.all === 'true';
 

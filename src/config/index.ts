@@ -101,6 +101,7 @@ const defaultConfig = {
     traceDir: './traces',
     maxFileSize: 100 * 1024 * 1024
   },
+  adminWhitelist: ['127.0.0.1'],
   commands: {
     enabled: false,
     prefix: '\\'
@@ -193,6 +194,7 @@ export interface SavorConfig {
     traceDir: string;
     maxFileSize: number;
   };
+  adminWhitelist?: string[];  // 允许访问管理 API 的 IP 白名单，默认 ['127.0.0.1']
 }
 
 // ==================== Deep Merge Helper ====================
@@ -509,6 +511,13 @@ function reloadHotConfig(onUpdate?: (updatedKeys: string[], newConfig: Partial<S
       Config.fullTrace = { ...Config.fullTrace, ...newUserConfig.fullTrace };
       newConfig.fullTrace = newUserConfig.fullTrace;
       updatedKeys.push('fullTrace');
+    }
+
+    // ==================== 管理白名单配置 ====================
+    if (newUserConfig.adminWhitelist !== undefined) {
+      Config.adminWhitelist = newUserConfig.adminWhitelist;
+      newConfig.adminWhitelist = newUserConfig.adminWhitelist;
+      updatedKeys.push('adminWhitelist');
     }
 
     // ==================== 日志级别 ====================
