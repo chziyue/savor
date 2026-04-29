@@ -41,6 +41,10 @@ const isDev = process.env.NODE_ENV !== 'production';
 const accessLogPath = path.join(LOG_DIR, 'access.log');
 const errorLogPath = path.join(LOG_DIR, 'error.log');
 
+// 轮转配置
+const MAX_LOG_SIZE = 50 * 1024 * 1024; // 50MB 触发轮转
+const MAX_LOG_FILES = 5;               // 最多保留 5 个历史文件
+
 // 创建控制台 Logger
 const consoleLogger = pino({
   level: logLevel,
@@ -56,23 +60,93 @@ const consoleLogger = pino({
   } : undefined,
 });
 
-// 创建文件写入流
-const accessStream = fs.createWriteStream(accessLogPath, { flags: 'a' });
-const errorStream = fs.createWriteStream(errorLogPath, { flags: 'a' });
+// ==================== 日志轮转写入流 ====================
 
-// 监听流错误，避免未处理的 error 事件导致进程崩溃
-accessStream.on('error', (err) => {
-  console.error('[Logger] access.log 写入错误:', err.message);
-});
-errorStream.on('error', (err) => {
-  console.error('[Logger] error.log 写入错误:', err.message);
-});
+/**
+ * 可自动轮转的写入流封装
+ * 每次写入前检查文件大小，超过阈值则轮转
+ */
+class RotatingStream {
+  private stream: fs.WriteStream;
+  private filePath: string;
+  private currentSize: number;
+
+  constructor(filePath: string) {
+    this.filePath = filePath;
+    this.stream = this.createStream();
+    this.currentSize = this.getFileSize();
+  }
+
+  private createStream(): fs.WriteStream {
+    const s = fs.createWriteStream(this.filePath, { flags: 'a' });
+    s.on('error', (err) => {
+      console.error(`[Logger] ${path.basename(this.filePath)} 写入错误:`, err.message);
+    });
+    return s;
+  }
+
+  private getFileSize(): number {
+    try {
+      return fs.statSync(this.filePath).size;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * 轮转：access.log → access.log.1 → access.log.2 → ... → 删除最旧的
+   */
+  private rotate(): void {
+    try {
+      // 关闭当前流
+      this.stream.end();
+
+      // 删除最旧的备份
+      const oldest = `${this.filePath}.${MAX_LOG_FILES}`;
+      if (fs.existsSync(oldest)) {
+        fs.unlinkSync(oldest);
+      }
+
+      // 依次重命名：.4 → .5, .3 → .4, ..., .1 → .2, 原文件 → .1
+      for (let i = MAX_LOG_FILES - 1; i >= 1; i--) {
+        const from = `${this.filePath}.${i}`;
+        const to = `${this.filePath}.${i + 1}`;
+        if (fs.existsSync(from)) {
+          fs.renameSync(from, to);
+        }
+      }
+      if (fs.existsSync(this.filePath)) {
+        fs.renameSync(this.filePath, `${this.filePath}.1`);
+      }
+
+      // 重建写入流
+      this.stream = this.createStream();
+      this.currentSize = 0;
+    } catch (err) {
+      console.error(`[Logger] 日志轮转失败:`, err instanceof Error ? err.message : String(err));
+      // 轮转失败时重建流继续写入
+      this.stream = this.createStream();
+    }
+  }
+
+  write(data: string): void {
+    // 检查是否需要轮转
+    if (this.currentSize >= MAX_LOG_SIZE) {
+      this.rotate();
+    }
+    this.stream.write(data);
+    this.currentSize += Buffer.byteLength(data);
+  }
+}
 
 /**
  * 兼容 Winston API 的 Logger
  * Winston: logger.info(message, meta)
  * Pino: logger.info(meta, message)
  */
+const accessStream = new RotatingStream(accessLogPath);
+const errorStream = new RotatingStream(errorLogPath);
+
 export const logger = {
   info: (message: string, meta?: object) => {
     const metaObj = meta || {};
