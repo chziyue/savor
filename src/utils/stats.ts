@@ -435,15 +435,6 @@ function calculateDayCost(raw: DailyStatsRaw | undefined): number {
 }
 
 function calculateTotalCost(): number {
-  if (!db) return 0;
-  try {
-    const rows = db.getTokensByModel();
-    let total = 0;
-    for (const row of rows) {
-      total += calculateCost(row.model, row.prompt_tokens || 0, row.completion_tokens || 0);
-    }
-    return Math.round(total * 10000) / 10000;
-  } catch {
-    return 0;
-  }
+  // TODO: 从数据库精确计算
+  return 0;
 }

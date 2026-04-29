@@ -514,22 +514,6 @@ export class StatsDatabase {
   }
 
   /**
-   * 按模型聚合 token 用量（用于成本计算）
-   */
-  getTokensByModel(): Array<{ model: string; prompt_tokens: number; completion_tokens: number }> {
-    const stmt = this.db.prepare(`
-      SELECT 
-        model,
-        SUM(prompt_tokens) as prompt_tokens,
-        SUM(completion_tokens) as completion_tokens
-      FROM requests
-      WHERE status = 'success'
-      GROUP BY model
-    `);
-    return stmt.all() as Array<{ model: string; prompt_tokens: number; completion_tokens: number }>;
-  }
-
-  /**
    * 获取总体缓存统计（duration=0 表示缓存命中）
    */
   getOverallCacheStats() {
