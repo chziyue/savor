@@ -242,14 +242,11 @@ interface RequestBody {
 
 export function filterObject(obj: RequestBody, config?: FilterConfig): FilterObjectResult {
   const allCategories = new Set<FilterCategory>();
-
-  // 深拷贝请求体，避免修改原始对象
-  const body = JSON.parse(JSON.stringify(obj)) as RequestBody;
   
   // 过滤用户当前输入的消息（messages 数组中最后一条 user 消息）
-  if (body.messages && Array.isArray(body.messages)) {
-    for (let i = body.messages.length - 1; i >= 0; i--) {
-      const msg = body.messages[i];
+  if (obj.messages && Array.isArray(obj.messages)) {
+    for (let i = obj.messages.length - 1; i >= 0; i--) {
+      const msg = obj.messages[i];
       
       if (msg && msg.role === 'user') {
         // 处理 content 可能是数组的情况（OpenClaw 格式）
@@ -295,7 +292,7 @@ export function filterObject(obj: RequestBody, config?: FilterConfig): FilterObj
     }
   }
   
-  return { data: body, categories: Array.from(allCategories) };
+  return { data: obj, categories: Array.from(allCategories) };
 }
 
 /**
