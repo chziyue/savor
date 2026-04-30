@@ -199,6 +199,7 @@ module.exports = {
 
   describe('stopConfigWatcher', () => {
     it('should stop watching config file', async () => {
+      // 等待 6 秒确保轮询（3秒间隔）和防抖（1秒）都完成
       process.cwd = () => testConfigDir;
 
       let callbackCalled = false;
@@ -216,11 +217,11 @@ module.exports = {
 };
 `);
 
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise(resolve => setTimeout(resolve, 6000));
 
       // 不应该触发更新（fs.watch 和轮询都已停止）
       expect(callbackCalled).toBe(false);
-    });
+    }, 10000);
 
     it('should be safe to call multiple times', () => {
       expect(() => {

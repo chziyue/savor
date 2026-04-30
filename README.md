@@ -377,6 +377,21 @@ commands: {
 
 ## 版本历史
 
+### v0.6.6 (2026-04-30)
+
+- ✅ 修复配置热重载：支持 vim 原子写入（rename 事件）+ Docker 环境轮询兜底（3秒间隔）
+- ✅ 修复 Anthropic 协议流式响应 token 统计：input_tokens/output_tokens 解析
+- ✅ 修复 Dashboard Token 统计显示：修正 prompt/completion/total 字段对应关系
+- ✅ 修复 Dashboard 和日志页面全部 innerHTML 拼接处增加 HTML 转义防 XSS
+- ✅ 修复日志和追踪写入流增加 error 处理器防止进程崩溃
+- ✅ 修复流式响应增加上游 HTTP 状态码检查
+- ✅ 修复流式响应中途出错时检查 headersSent 避免进程崩溃
+- ✅ 修复限流管理 API 增加 IP 白名单认证，默认仅允许 127.0.0.1 访问
+- ✅ 修复日志文件自动轮转，50MB 触发，保留 5 个历史文件
+- ✅ 修复日志轮转、成本计算、过滤器深拷贝问题
+- ✅ 修复 deepMerge 类型签名导致 Docker 构建 TS 编译失败
+- ✅ 修复多项中低级安全问题
+
 ### v0.6.5 (2026-04-24)
 
 - ✅ 用自定义后缀替代 AppendV1 布尔开关：upstreamSuffix、anthropicUpstreamSuffix
